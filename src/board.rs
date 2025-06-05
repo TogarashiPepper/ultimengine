@@ -97,8 +97,18 @@ pub fn full(board: &Board) -> bool {
     board.iter().all(|sl| *sl != Slot::Empty)
 }
 
+#[derive(Debug, Clone, Copy)]
+enum State {
+    Won,
+    Lost,
+    Tied,
+    Undecided,
+}
+
 pub struct Game {
+    // TODO: AOS vs SOA, must benchmark (prob insignificant w/9 elems)
     pub boards: [Board; 9],
+    pub states: [State; 9],
     /// Indicates active board, 0-8 is the idx, 9 means any board is free
     pub active: usize,
 }
@@ -133,6 +143,7 @@ impl Game {
     pub fn new() -> Self {
         Game {
             boards: [[Slot::Empty; 9]; 9],
+            states: [State::Undecided; 9],
             active: 9,
         }
     }
