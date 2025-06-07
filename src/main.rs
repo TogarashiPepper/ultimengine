@@ -1,39 +1,17 @@
 mod board;
-use rand::Rng;
-use std::{io::Write, time::Duration};
+mod counting;
+mod game;
 
-use board::{Game, Slot, full};
-
-fn parse_move(movestr: &str) -> Result<(usize, usize), &'static str> {
-    if movestr.len() != 2 {
-        return Err("Move string too long");
-    }
-
-    // Purposefully Invalid sentinel
-    let mut mov = (9, 9);
-    let [row, col] = movestr.as_bytes() else {
-        unreachable!()
-    };
-
-    if ('a'..='i').contains(&char::from(*row).to_ascii_lowercase()) {
-        mov.0 = *row as usize - 'a' as usize;
-    }
-
-    if char::from(*col).is_ascii_digit() {
-        mov.1 = *col as usize - '0' as usize - 1;
-    }
-
-    if mov.0 == 9 || mov.1 == 9 {
-        return Err("invalid row or column");
-    }
-
-    Ok(mov)
-}
+use board::Slot;
+use counting::won_for;
+use game::Game;
 
 fn redraw(game: &Game) {
     print!("\x1B[2J\x1B[1;1H");
     println!("{}", game.print());
 }
+
+const DBG_INFO: bool = true;
 
 fn main() {
     let mut game = Game::new();
@@ -43,6 +21,19 @@ fn main() {
     loop {
         redraw(&game);
 
+        if DBG_INFO {
+            use std::fmt::Write;
+
+            let mut bf = String::new();
+
+            write!(bf, "won: ").unwrap();
+            for b in game.boards {
+                write!(bf, "{:?}, ", won_for(b, Slot::X)).unwrap();
+            }
+
+            println!("{bf}");
+        }
+
         print!(
             "Enter your move (ex. a5, active board: {}): ",
             if game.active == 9 {
@@ -51,39 +42,24 @@ fn main() {
                 (game.active as u8 + b'a') as char
             }
         );
+
+
+        use std::io::Write;
         std::io::stdout().flush().unwrap();
 
         mov.clear();
         std::io::stdin().read_line(&mut mov).unwrap();
 
-        let (game_num, idx) = parse_move(mov.trim()).unwrap();
-        if game.active == 9 {
-            game.active = game_num;
-        }
+        let mv = game.parse_move(mov.trim()).unwrap();
+        game.make_move(mv, Slot::O).unwrap();
 
-        if game.active != game_num {
-            println!("must play in the active board");
-            std::thread::sleep(Duration::from_secs(1));
+        // redraw(&game);
 
-            continue;
-        }
-
-        if game.boards[game_num][idx] != Slot::Empty {
-            println!("{} is not empty", mov.trim());
-            std::thread::sleep(Duration::from_secs(1));
-
-            continue;
-        }
-
-        game.boards[game_num][idx] = Slot::O;
-        game.active = idx;
-        redraw(&game);
-
-        // Eng move:
-        let rn = rng.random_range(0..9);
-        game.boards[game.active][rn] = Slot::X;
-        game.active = rn;
-
-        std::thread::sleep(Duration::from_secs(1));
+        // // Eng move:
+        // let rn = rng.random_range(0..9);
+        // game.boards[game.active][rn] = Slot::X;
+        // game.active = rn;
+        //
+        // std::thread::sleep(Duration::from_secs(1));
     }
 }
