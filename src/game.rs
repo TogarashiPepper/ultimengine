@@ -1,6 +1,6 @@
 use crate::{
     board::{Board, Slot, State},
-    counting::won_for,
+    counting::won_for, moves::Move,
 };
 
 pub struct Game {
@@ -46,79 +46,62 @@ impl Game {
         }
     }
 
+    pub fn test() -> Self {
+        use Slot::{Empty as E, O, X};
+
+        let mut g = Self::new();
+
+        // Tie board
+        g.boards[0] = Board::new_with([X, O, X, X, O, O, O, X, X]);
+        g.states[0] = State::Tied;
+        // Win Board
+        g.boards[1] = Board::new_with([X, X, X, E, E, E, E, E, E]);
+        g.states[1] = State::Won;
+        // Loss Board
+        g.boards[2] = Board::new_with([O, O, O, E, E, E, E, E, E]);
+        g.states[2] = State::Lost;
+
+        g
+    }
+
     pub fn make_move(
         &mut self,
-        (board, idx): (usize, usize),
+        mv: Move,
         side: Slot,
     ) -> Result<(), &'static str> {
-        if self.active == 9 {
-            self.active = board;
-        }
-
-        if self.active != board {
-            return Err("must play in the active board");
-        }
-
-        let brd = &mut self.boards[board];
-        if brd[idx] != Slot::Empty {
-            return Err("square is not empty");
-        }
-
-        if self.states[board] != State::Undecided {
+        if self.states[mv.game] != State::Undecided {
             return Err("That game has been finished");
         }
 
-        brd[idx] = side;
-        if won_for(*brd, Slot::X) {
-            self.states[board] = State::Won;
-        } else if won_for(*brd, Slot::O) {
-            self.states[board] = State::Lost;
-        } else if brd.full() {
-            self.states[board] = State::Tied;
+        let brd = &mut self.boards[mv.game];
+        if brd[mv.index] != Slot::Empty {
+            return Err("square is not empty");
         }
 
-        if self.states[idx] != State::Undecided {
+        if self.active == 9 {
+            self.active = mv.game;
+        }
+
+        if self.active != mv.game {
+            return Err("must play in the active board");
+        }
+
+        brd[mv.index] = side;
+        if won_for(*brd, Slot::X) {
+            self.states[mv.game] = State::Won;
+        } else if won_for(*brd, Slot::O) {
+            self.states[mv.game] = State::Lost;
+        } else if brd.full() {
+            self.states[mv.game] = State::Tied;
+        }
+
+        if self.states[mv.index] != State::Undecided {
             self.active = 9;
         } else {
-            self.active = idx;
+            self.active = mv.index;
         }
 
         Ok(())
-    }
-
-    // Game, Idx
-    pub fn parse_move(&self, movestr: &str) -> Result<(usize, usize), &'static str> {
-        if movestr.len() > 2 || movestr.is_empty() {
-            return Err("Move string must be 1 or 2 chars");
-        }
-
-        // TODO: add proper error handling and make dr
-        if movestr.len() == 1 && self.active != 9 {
-            return Ok((
-                self.active,
-                movestr.as_bytes()[0] as usize - '0' as usize - 1,
-            ));
-        }
-
-        // Purposefully Invalid sentinel
-        let mut mov = (9, 9);
-        let [game, idx] = movestr.as_bytes() else {
-            unreachable!()
-        };
-
-        if ('a'..='i').contains(&char::from(*game).to_ascii_lowercase()) {
-            mov.0 = *game as usize - 'a' as usize;
-        }
-
-        if char::from(*idx).is_ascii_digit() {
-            mov.1 = *idx as usize - '0' as usize - 1;
-        }
-
-        if mov.0 == 9 || mov.1 == 9 {
-            return Err("invalid row or column");
-        }
-
-        Ok(mov)
     }
 
     pub fn print(&self) -> String {
@@ -138,6 +121,8 @@ impl Game {
                             *byte = b'2';
                         } else if self.states[idx] == State::Won {
                             *byte = b'1';
+                        } else if self.states[idx] == State::Tied {
+                            *byte = b'3';
                         } else {
                             *byte = b'7';
                         }

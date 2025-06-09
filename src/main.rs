@@ -1,10 +1,12 @@
 mod board;
 mod counting;
 mod game;
+mod moves;
 
 use board::Slot;
 use counting::won_for;
 use game::Game;
+use moves::parse_move;
 
 fn redraw(game: &Game) {
     print!("\x1B[2J\x1B[1;1H");
@@ -14,9 +16,13 @@ fn redraw(game: &Game) {
 const DBG_INFO: bool = true;
 
 fn main() {
-    let mut game = Game::new();
+    let mut game = Game::test();
     let mut mov = String::new();
     let mut rng = rand::rng();
+
+    // Let
+    let mut void = String::new();
+    let mut stdin = std::io::stdin();
 
     loop {
         redraw(&game);
@@ -43,15 +49,21 @@ fn main() {
             }
         );
 
-
         use std::io::Write;
         std::io::stdout().flush().unwrap();
 
         mov.clear();
-        std::io::stdin().read_line(&mut mov).unwrap();
+        stdin.read_line(&mut mov).unwrap();
 
-        let mv = game.parse_move(mov.trim()).unwrap();
-        game.make_move(mv, Slot::O).unwrap();
+        let mv = parse_move(mov.trim(), game.active).and_then(|mv| game.make_move(mv, Slot::O));
+        if let Err(e) = mv {
+            println!("\x1b[0;31m{e} (press enter to continue)\x1b[0m");
+
+            // TODO: make it more efficient?
+            stdin.read_line(&mut void).unwrap();
+
+            continue;
+        }
 
         // redraw(&game);
 

@@ -44,6 +44,10 @@ impl Board {
         Board([Slot::Empty; 9])
     }
 
+    pub fn new_with(brd: [Slot; 9]) -> Self {
+        Board(brd)
+    }
+
     pub const fn rows(self) -> [[Slot; 3]; 3] {
         // SAFETY: arrays should be contiguous in memory
         // TODO: miri test

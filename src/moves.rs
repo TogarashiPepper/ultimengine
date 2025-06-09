@@ -1,0 +1,64 @@
+use crate::game::Game;
+
+// TODO: abandon usage of sentinels
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub struct Move {
+    pub game: usize,
+    pub index: usize,
+}
+
+pub fn is_legal(game: &Game, mv: Move) -> bool {
+    todo!()
+}
+
+// Game, Idx
+pub fn parse_move(input: &str, active: usize) -> Result<Move, &'static str> {
+    if input.len() > 2 || input.is_empty() {
+        return Err("Move string must be 1 or 2 chars");
+    }
+
+    if active == 9 && input.len() == 1 {
+        return Err("Can only use shorthand notation when a specific board is active");
+    }
+
+    // TODO: add proper error handling and make dry
+    if input.len() == 1 && active != 9 {
+        return Ok(Move {
+            game: active,
+            index: input.as_bytes()[0] as usize - '0' as usize - 1,
+        });
+    }
+
+    // Purposefully Invalid sentinel
+    // game, idx
+    let mut mov = Move {
+        game: active,
+        index: 9,
+    };
+
+    let bs = input.as_bytes();
+
+    if input.len() == 2 {
+        if !('a'..='i').contains(&char::from(bs[0])) {
+            return Err("game must be within a to i");
+        };
+
+        let v = bs[0] as usize - 'a' as usize;
+        mov.game = v;
+    }
+
+    if !char::from(bs[bs.len() - 1]).is_ascii_digit() {
+        return Err("index must be between 1 and 9");
+    };
+
+    mov.index = bs[bs.len() - 1] as usize - '0' as usize - 1;
+
+    Ok(mov)
+}
+
+pub fn legal_moves(game: &Game) -> Vec<Move> {
+    
+}
+
+
+
