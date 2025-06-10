@@ -1,6 +1,9 @@
+use std::array;
+
 use crate::{
     board::{Board, Slot, State},
-    counting::won_for, moves::Move,
+    counting::won_for,
+    moves::{Move, is_legal},
 };
 
 pub struct Game {
@@ -9,32 +12,34 @@ pub struct Game {
     pub states: [State; 9],
     /// Indicates active board, 0-8 is the idx, 9 means any board is free
     pub active: usize,
+    pub state: State,
+    pub last_move: Option<Move>,
 }
 
 /// Template for board, a-i represents which board
 /// x means insert fmt char, y means insert reset char
 const TEMPLATE: &[u8] = b"
-  \x1b[0;3nma | a | a\x1b[0m   |   \x1b[0;3omb | b | b\x1b[0m   |   \x1b[0;3pmc | c | c\x1b[0m   
+  \x1b[0;3nm\x1b[0;3Ama\x1b[0;3nm | \x1b[0;3Ama\x1b[0;3nm | \x1b[0;3Ama\x1b[0;3nm\x1b[0m   |   \x1b[0;3om\x1b[0;3Bmb\x1b[0;3om | \x1b[0;3Bmb\x1b[0;3om | \x1b[0;3Bmb\x1b[0;3om\x1b[0m   |   \x1b[0;3pm\x1b[0;3Cmc\x1b[0;3pm | \x1b[0;3Cmc\x1b[0;3pm | \x1b[0;3Cmc\x1b[0;3pm\x1b[0m   
  \x1b[0;3nm-----------\x1b[0m  |  \x1b[0;3om-----------\x1b[0m  |  \x1b[0;3pm-----------\x1b[0m  
-  \x1b[0;3nma | a | a\x1b[0m   |   \x1b[0;3omb | b | b\x1b[0m   |   \x1b[0;3pmc | c | c\x1b[0m   
+  \x1b[0;3nm\x1b[0;3Ama\x1b[0;3nm | \x1b[0;3Ama\x1b[0;3nm | \x1b[0;3Ama\x1b[0;3nm\x1b[0m   |   \x1b[0;3om\x1b[0;3Bmb\x1b[0;3om | \x1b[0;3Bmb\x1b[0;3om | \x1b[0;3Bmb\x1b[0;3om\x1b[0m   |   \x1b[0;3pm\x1b[0;3Cmc\x1b[0;3pm | \x1b[0;3Cmc\x1b[0;3pm | \x1b[0;3Cmc\x1b[0;3pm\x1b[0m   
  \x1b[0;3nm-----------\x1b[0m  |  \x1b[0;3om-----------\x1b[0m  |  \x1b[0;3pm-----------\x1b[0m  
-  \x1b[0;3nma | a | a\x1b[0m   |   \x1b[0;3omb | b | b\x1b[0m   |   \x1b[0;3pmc | c | c\x1b[0m   
+  \x1b[0;3nm\x1b[0;3Ama\x1b[0;3nm | \x1b[0;3Ama\x1b[0;3nm | \x1b[0;3Ama\x1b[0;3nm\x1b[0m   |   \x1b[0;3om\x1b[0;3Bmb\x1b[0;3om | \x1b[0;3Bmb\x1b[0;3om | \x1b[0;3Bmb\x1b[0;3om\x1b[0m   |   \x1b[0;3pm\x1b[0;3Cmc\x1b[0;3pm | \x1b[0;3Cmc\x1b[0;3pm | \x1b[0;3Cmc\x1b[0;3pm\x1b[0m   
               |               |               
 ---------------------------------------------
               |               |
-  \x1b[0;3qmd | d | d\x1b[0m   |   \x1b[0;3rme | e | e\x1b[0m   |   \x1b[0;3smf | f | f\x1b[0m   
+  \x1b[0;3qm\x1b[0;3Dmd\x1b[0;3qm | \x1b[0;3Dmd\x1b[0;3qm | \x1b[0;3Dmd\x1b[0;3qm\x1b[0m   |   \x1b[0;3rm\x1b[0;3Eme\x1b[0;3rm | \x1b[0;3Eme\x1b[0;3rm | \x1b[0;3Eme\x1b[0;3rm\x1b[0m   |   \x1b[0;3sm\x1b[0;3Fmf\x1b[0;3sm | \x1b[0;3Fmf\x1b[0;3sm | \x1b[0;3Fmf\x1b[0;3sm\x1b[0m   
  \x1b[0;3qm-----------\x1b[0m  |  \x1b[0;3rm-----------\x1b[0m  |  \x1b[0;3sm-----------\x1b[0m  
-  \x1b[0;3qmd | d | d\x1b[0m   |   \x1b[0;3rme | e | e\x1b[0m   |   \x1b[0;3smf | f | f\x1b[0m   
+  \x1b[0;3qm\x1b[0;3Dmd\x1b[0;3qm | \x1b[0;3Dmd\x1b[0;3qm | \x1b[0;3Dmd\x1b[0;3qm\x1b[0m   |   \x1b[0;3rm\x1b[0;3Eme\x1b[0;3rm | \x1b[0;3Eme\x1b[0;3rm | \x1b[0;3Eme\x1b[0;3rm\x1b[0m   |   \x1b[0;3sm\x1b[0;3Fmf\x1b[0;3sm | \x1b[0;3Fmf\x1b[0;3sm | \x1b[0;3Fmf\x1b[0;3sm\x1b[0m   
  \x1b[0;3qm-----------\x1b[0m  |  \x1b[0;3rm-----------\x1b[0m  |  \x1b[0;3sm-----------\x1b[0m  
-  \x1b[0;3qmd | d | d\x1b[0m   |   \x1b[0;3rme | e | e\x1b[0m   |   \x1b[0;3smf | f | f\x1b[0m   
+  \x1b[0;3qm\x1b[0;3Dmd\x1b[0;3qm | \x1b[0;3Dmd\x1b[0;3qm | \x1b[0;3Dmd\x1b[0;3qm\x1b[0m   |   \x1b[0;3rm\x1b[0;3Eme\x1b[0;3rm | \x1b[0;3Eme\x1b[0;3rm | \x1b[0;3Eme\x1b[0;3rm\x1b[0m   |   \x1b[0;3sm\x1b[0;3Fmf\x1b[0;3sm | \x1b[0;3Fmf\x1b[0;3sm | \x1b[0;3Fmf\x1b[0;3sm\x1b[0m   
               |               |               
 ---------------------------------------------
               |               |
-  \x1b[0;3tmg | g | g\x1b[0m   |   \x1b[0;3umh | h | h\x1b[0m   |   \x1b[0;3vmi | i | i\x1b[0m   
+  \x1b[0;3tm\x1b[0;3Gmg\x1b[0;3tm | \x1b[0;3Gmg\x1b[0;3tm | \x1b[0;3Gmg\x1b[0;3tm\x1b[0m   |   \x1b[0;3um\x1b[0;3Hmh\x1b[0;3um | \x1b[0;3Hmh\x1b[0;3um | \x1b[0;3Hmh\x1b[0;3um\x1b[0m   |   \x1b[0;3vm\x1b[0;3Imi\x1b[0;3vm | \x1b[0;3Imi\x1b[0;3vm | \x1b[0;3Imi\x1b[0;3vm\x1b[0m   
  \x1b[0;3tm-----------\x1b[0m  |  \x1b[0;3um-----------\x1b[0m  |  \x1b[0;3vm-----------\x1b[0m  
-  \x1b[0;3tmg | g | g\x1b[0m   |   \x1b[0;3umh | h | h\x1b[0m   |   \x1b[0;3vmi | i | i\x1b[0m   
+  \x1b[0;3tm\x1b[0;3Gmg\x1b[0;3tm | \x1b[0;3Gmg\x1b[0;3tm | \x1b[0;3Gmg\x1b[0;3tm\x1b[0m   |   \x1b[0;3um\x1b[0;3Hmh\x1b[0;3um | \x1b[0;3Hmh\x1b[0;3um | \x1b[0;3Hmh\x1b[0;3um\x1b[0m   |   \x1b[0;3vm\x1b[0;3Imi\x1b[0;3vm | \x1b[0;3Imi\x1b[0;3vm | \x1b[0;3Imi\x1b[0;3vm\x1b[0m   
  \x1b[0;3tm-----------\x1b[0m  |  \x1b[0;3um-----------\x1b[0m  |  \x1b[0;3vm-----------\x1b[0m  
-  \x1b[0;3tmg | g | g\x1b[0m   |   \x1b[0;3umh | h | h\x1b[0m   |   \x1b[0;3vmi | i | i\x1b[0m   
+  \x1b[0;3tm\x1b[0;3Gmg\x1b[0;3tm | \x1b[0;3Gmg\x1b[0;3tm | \x1b[0;3Gmg\x1b[0;3tm\x1b[0m   |   \x1b[0;3um\x1b[0;3Hmh\x1b[0;3um | \x1b[0;3Hmh\x1b[0;3um | \x1b[0;3Hmh\x1b[0;3um\x1b[0m   |   \x1b[0;3vm\x1b[0;3Imi\x1b[0;3vm | \x1b[0;3Imi\x1b[0;3vm | \x1b[0;3Imi\x1b[0;3vm\x1b[0m   
 ";
 
 impl Game {
@@ -43,6 +48,8 @@ impl Game {
             boards: [Board::new(); 9],
             states: [State::Undecided; 9],
             active: 9,
+            state: State::Undecided,
+            last_move: None,
         }
     }
 
@@ -64,27 +71,25 @@ impl Game {
         g
     }
 
-    pub fn make_move(
-        &mut self,
-        mv: Move,
-        side: Slot,
-    ) -> Result<(), &'static str> {
-        if self.states[mv.game] != State::Undecided {
-            return Err("That game has been finished");
-        }
+    pub fn shrink(&self) -> Board {
+        let arr = array::from_fn(|idx| match self.states[idx] {
+            State::Won => Slot::X,
+            State::Lost => Slot::O,
+            State::Tied => Slot::Disabled,
+            State::Undecided => Slot::Empty,
+        });
 
-        let brd = &mut self.boards[mv.game];
-        if brd[mv.index] != Slot::Empty {
-            return Err("square is not empty");
-        }
+        Board::new_with(arr)
+    }
+
+    pub fn make_move(&mut self, mv: Move, side: Slot) -> Result<(), &'static str> {
+        is_legal(self, mv)?;
 
         if self.active == 9 {
             self.active = mv.game;
         }
 
-        if self.active != mv.game {
-            return Err("must play in the active board");
-        }
+        let brd = &mut self.boards[mv.game];
 
         brd[mv.index] = side;
         if won_for(*brd, Slot::X) {
@@ -95,13 +100,34 @@ impl Game {
             self.states[mv.game] = State::Tied;
         }
 
+        let shrunken = self.shrink();
+        if won_for(shrunken, Slot::X) {
+            self.state = State::Won;
+        } else if won_for(shrunken, Slot::O) {
+            self.state = State::Lost;
+        } else if shrunken.full() {
+            self.state = State::Tied;
+        }
+
         if self.states[mv.index] != State::Undecided {
             self.active = 9;
         } else {
             self.active = mv.index;
         }
 
+        self.last_move = Some(mv);
+
         Ok(())
+    }
+
+    fn state_to_col(&self, state: State, idx: usize) -> u8 {
+        match state {
+            State::Won => b'1',
+            State::Lost => b'2',
+            State::Tied => b'3',
+            State::Undecided if idx == self.active || self.active == 9 => b'5',
+            _ => b'7',
+        }
     }
 
     pub fn print(&self) -> String {
@@ -113,21 +139,25 @@ impl Game {
                 match byte {
                     b'n'..=b'v' => {
                         let idx = (*byte - b'n') as usize;
-                        if self.states[idx] == State::Undecided
-                            && (idx == self.active || self.active == 9)
-                        {
-                            *byte = b'5';
-                        } else if self.states[idx] == State::Lost {
-                            *byte = b'2';
-                        } else if self.states[idx] == State::Won {
-                            *byte = b'1';
-                        } else if self.states[idx] == State::Tied {
-                            *byte = b'3';
-                        } else {
-                            *byte = b'7';
-                        }
+
+                        *byte = self.state_to_col(self.states[idx], idx);
                     }
                     b'm' => continue,
+                    b'A'..=b'Z' => {
+                        let gm = (*byte - b'A') as usize;
+                        let idx = idxs[gm];
+
+                        if self.last_move
+                            == Some(Move {
+                                game: gm,
+                                index: idx,
+                            })
+                        {
+                            *byte = b'4';
+                        } else {
+                            *byte = self.state_to_col(self.states[gm], gm);
+                        }
+                    }
                     _ => {
                         let idx = (*byte - b'a') as usize;
                         *byte = self.boards[idx][idxs[idx]].to_chr() as u8;

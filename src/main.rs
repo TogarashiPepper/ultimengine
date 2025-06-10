@@ -3,14 +3,26 @@ mod counting;
 mod game;
 mod moves;
 
-use board::Slot;
+use std::time::Duration;
+
+use board::{Slot, State};
 use counting::won_for;
 use game::Game;
-use moves::parse_move;
+use moves::{legal_moves, parse_move, Move};
+use rand::Rng;
 
 fn redraw(game: &Game) {
     print!("\x1B[2J\x1B[1;1H");
     println!("{}", game.print());
+
+    match game.state {
+        State::Won => println!("YOU HAVE LOST!!!!!"),
+        State::Lost => println!("YOU HAVE WON!!!!!"),
+        State::Tied => println!("tie game :("),
+        State::Undecided => return,
+    }
+
+    std::process::exit(1);
 }
 
 const DBG_INFO: bool = true;
@@ -65,13 +77,17 @@ fn main() {
             continue;
         }
 
-        // redraw(&game);
+        redraw(&game);
 
-        // // Eng move:
-        // let rn = rng.random_range(0..9);
-        // game.boards[game.active][rn] = Slot::X;
-        // game.active = rn;
-        //
-        // std::thread::sleep(Duration::from_secs(1));
+        // Eng move:
+        let lgsmvs = legal_moves(&game);
+        let rn = rng.random_range(0..lgsmvs.len());
+        
+        game.make_move(lgsmvs[rn], Slot::X).unwrap();
+        std::thread::sleep(Duration::from_secs(1));
+
+        redraw(&game);
+        
+        std::thread::sleep(Duration::from_secs(1));
     }
 }

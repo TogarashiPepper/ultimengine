@@ -1,4 +1,7 @@
-use crate::game::Game;
+use crate::{
+    board::{Slot, State},
+    game::Game,
+};
 
 // TODO: abandon usage of sentinels
 #[derive(Debug, PartialEq, Clone, Copy)]
@@ -7,8 +10,20 @@ pub struct Move {
     pub index: usize,
 }
 
-pub fn is_legal(game: &Game, mv: Move) -> bool {
-    todo!()
+pub fn is_legal(game: &Game, mv: Move) -> Result<(), &'static str> {
+    if game.states[mv.game] != State::Undecided {
+        return Err("That game has been finished");
+    }
+
+    if game.boards[mv.game][mv.index] != Slot::Empty {
+        return Err("square is not empty");
+    }
+
+    if game.active != mv.game && game.active != 9 {
+        return Err("must play in the active board");
+    }
+
+    Ok(())
 }
 
 // Game, Idx
@@ -57,8 +72,18 @@ pub fn parse_move(input: &str, active: usize) -> Result<Move, &'static str> {
 }
 
 pub fn legal_moves(game: &Game) -> Vec<Move> {
-    
+    let mut mvs = vec![];
+
+    for (bdx, board) in game.boards.iter().enumerate() {
+        for idx in 0..board.inner().len() {
+            if is_legal(game, Move { game: bdx, index: idx }).is_ok() {
+                mvs.push(Move {
+                    game: bdx,
+                    index: idx,
+                })
+            }
+        }
+    }
+
+    mvs
 }
-
-
-

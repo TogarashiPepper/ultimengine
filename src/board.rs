@@ -9,6 +9,7 @@ pub enum Slot {
     Empty,
     X,
     O,
+    Disabled,
 }
 
 impl Slot {
@@ -17,6 +18,7 @@ impl Slot {
             Slot::Empty => ' ',
             Slot::X => 'X',
             Slot::O => 'O',
+            Slot::Disabled => '_',
         }
     }
 }
@@ -46,6 +48,10 @@ impl Board {
 
     pub fn new_with(brd: [Slot; 9]) -> Self {
         Board(brd)
+    }
+
+    pub fn inner(self) -> [Slot; 9] {
+        self.0
     }
 
     pub const fn rows(self) -> [[Slot; 3]; 3] {
