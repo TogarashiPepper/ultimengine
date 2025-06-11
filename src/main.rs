@@ -5,7 +5,7 @@ mod moves;
 
 use cfg_if::cfg_if;
 use rand::Rng;
-use std::{collections::BTreeMap, time::Duration};
+use std::{cmp::Ordering, collections::BTreeMap, time::Duration};
 
 use crate::{
     board::{Slot, State},
@@ -136,13 +136,13 @@ fn main() {
                     .or_insert_with(Vec::new)
                     .push(cur.0);
 
-                if acc.1 > cur.1 {
-                    acc
-                } else if acc.1 == cur.1 {
-                    let rn: bool = rng.random();
-                    if rn { acc } else { cur }
-                } else {
-                    cur
+                match acc.1.cmp(&cur.1) {
+                    Ordering::Less => cur,
+                    Ordering::Greater => acc,
+                    Ordering::Equal => {
+                        let rn: bool = rng.random();
+                        if rn { acc } else { cur }
+                    }
                 }
             })
             .unwrap();
