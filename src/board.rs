@@ -3,7 +3,9 @@ use std::{
     ops::{Index, IndexMut},
 };
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+use bincode::{Decode, Encode};
+
+#[derive(Encode, Decode, Clone, Copy, Debug, PartialEq)]
 #[repr(u8)]
 pub enum Slot {
     Empty,
@@ -29,7 +31,7 @@ impl Display for Slot {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Encode, Decode, Debug, Clone, Copy, PartialEq)]
 pub enum State {
     Won,
     Lost,
@@ -38,7 +40,7 @@ pub enum State {
 }
 
 #[repr(transparent)]
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Encode, Decode, Debug, Clone, Copy, PartialEq)]
 pub struct Board([Slot; 9]);
 
 impl Board {
@@ -56,7 +58,6 @@ impl Board {
 
     pub const fn rows(self) -> [[Slot; 3]; 3] {
         // SAFETY: arrays should be contiguous in memory
-        // TODO: miri test
         unsafe { std::mem::transmute(self) }
     }
 
@@ -96,5 +97,17 @@ impl Index<usize> for Board {
 impl IndexMut<usize> for Board {
     fn index_mut(&mut self, index: usize) -> &mut Self::Output {
         &mut self.0[index]
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::{Board, Slot};
+
+    #[test]
+    fn does_rows_cause_ub() {
+        let game = Board::new();
+
+        game.rows()[0][2] = Slot::X;
     }
 }

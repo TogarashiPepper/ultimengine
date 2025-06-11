@@ -1,13 +1,15 @@
 use std::array;
 
+use bincode::{Decode, Encode};
+
 use crate::{
     board::{Board, Slot, State},
-    counting::won_for,
-    moves::{Move, is_legal},
+    counting::{possible_to_win, won_for},
+    moves::{is_legal, Move},
 };
 
+#[derive(Clone, Encode, Decode)]
 pub struct Game {
-    // TODO: AOS vs SOA, must benchmark (prob insignificant w/9 elems)
     pub boards: [Board; 9],
     pub states: [State; 9],
     /// Indicates active board, 0-8 is the idx, 9 means any board is free
@@ -53,7 +55,7 @@ impl Game {
         }
     }
 
-    pub fn test() -> Self {
+    pub fn _test() -> Self {
         use Slot::{Empty as E, O, X};
 
         let mut g = Self::new();
@@ -82,6 +84,14 @@ impl Game {
         Board::new_with(arr)
     }
 
+    pub fn sim_move(&self, mv: Move, side: Slot) -> Result<Game, &'static str> {
+        let mut new = self.clone();
+
+        new.make_move(mv, side)?;
+
+        Ok(new)
+    }
+
     pub fn make_move(&mut self, mv: Move, side: Slot) -> Result<(), &'static str> {
         is_legal(self, mv)?;
 
@@ -96,7 +106,7 @@ impl Game {
             self.states[mv.game] = State::Won;
         } else if won_for(*brd, Slot::O) {
             self.states[mv.game] = State::Lost;
-        } else if brd.full() {
+        } else if !possible_to_win(*brd) {
             self.states[mv.game] = State::Tied;
         }
 
@@ -105,7 +115,7 @@ impl Game {
             self.state = State::Won;
         } else if won_for(shrunken, Slot::O) {
             self.state = State::Lost;
-        } else if shrunken.full() {
+        } else if !possible_to_win(shrunken) {
             self.state = State::Tied;
         }
 

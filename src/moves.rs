@@ -1,10 +1,11 @@
+use bincode::{Decode, Encode};
+
 use crate::{
     board::{Slot, State},
     game::Game,
 };
 
-// TODO: abandon usage of sentinels
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Encode, Decode, Debug, PartialEq, Clone, Copy)]
 pub struct Move {
     pub game: usize,
     pub index: usize,
@@ -36,7 +37,6 @@ pub fn parse_move(input: &str, active: usize) -> Result<Move, &'static str> {
         return Err("Can only use shorthand notation when a specific board is active");
     }
 
-    // TODO: add proper error handling and make dry
     if input.len() == 1 && active != 9 {
         return Ok(Move {
             game: active,
