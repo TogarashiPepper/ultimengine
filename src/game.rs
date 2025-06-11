@@ -1,5 +1,6 @@
 use std::array;
 
+#[cfg(feature = "savestates")]
 use bincode::{Decode, Encode};
 
 use crate::{
@@ -8,7 +9,8 @@ use crate::{
     moves::{is_legal, Move},
 };
 
-#[derive(Clone, Encode, Decode)]
+#[derive(Clone)]
+#[cfg_attr(feature = "savestates", derive(Encode, Decode))]
 pub struct Game {
     pub boards: [Board; 9],
     pub states: [State; 9],

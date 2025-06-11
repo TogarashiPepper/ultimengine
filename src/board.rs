@@ -3,9 +3,11 @@ use std::{
     ops::{Index, IndexMut},
 };
 
+#[cfg(feature = "savestates")]
 use bincode::{Decode, Encode};
 
-#[derive(Encode, Decode, Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
+#[cfg_attr(feature = "savestates", derive(Encode, Decode))]
 #[repr(u8)]
 pub enum Slot {
     Empty,
@@ -31,7 +33,8 @@ impl Display for Slot {
     }
 }
 
-#[derive(Encode, Decode, Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
+#[cfg_attr(feature = "savestates", derive(Encode, Decode))]
 pub enum State {
     Won,
     Lost,
@@ -40,7 +43,8 @@ pub enum State {
 }
 
 #[repr(transparent)]
-#[derive(Encode, Decode, Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
+#[cfg_attr(feature = "savestates", derive(Encode, Decode))]
 pub struct Board([Slot; 9]);
 
 impl Board {
@@ -79,10 +83,6 @@ impl Board {
         let b = self.0;
 
         [[b[0], b[4], b[8]], [b[2], b[4], b[6]]]
-    }
-
-    pub fn full(self) -> bool {
-        self.0.iter().all(|s| *s != Slot::Empty)
     }
 }
 

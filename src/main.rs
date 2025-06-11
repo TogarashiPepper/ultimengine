@@ -3,6 +3,7 @@ mod counting;
 mod game;
 mod moves;
 
+use cfg_if::cfg_if;
 use std::time::Duration;
 
 use board::{Slot, State};
@@ -28,12 +29,20 @@ fn redraw(game: &Game) {
 const DBG_INFO: bool = true;
 
 fn main() {
+    #[cfg(feature = "savestates")]
     let config = bincode::config::standard();
 
     let mut game = if std::env::var("LOAD_GAME").is_ok() {
-        let mut file = std::fs::File::open("gamestate").unwrap();
+        cfg_if! {
+            if #[cfg(feature = "savestates")] {
+                let mut file = std::fs::File::open("gamestate").unwrap();
 
-        bincode::decode_from_std_read(&mut file, config).unwrap()
+                bincode::decode_from_std_read(&mut file, config).unwrap()
+            }
+            else {
+                panic!("This binary has not been compiled to use savestates")
+            }
+        }
     } else {
         Game::new()
     };
@@ -79,6 +88,7 @@ fn main() {
 
         match mov_buf.trim() {
             "undo" => std::mem::swap(&mut game, &mut last_g),
+            #[cfg(feature = "savestates")]
             x @ ("save" | "undosave") => {
                 let mut file = std::fs::File::create("gamestate").unwrap();
 
