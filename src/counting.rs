@@ -23,6 +23,10 @@ pub fn score_game(game: &Game) -> i32 {
 
     if let Some(last_move) = game.last_move {
         scr += score(game.boards[last_move.game], Slot::X);
+
+        if last_move.index == game.active {
+            scr += score(game.boards[game.active], Slot::O);
+        }
     }
 
     if game.active != 9 && game.last_move.map(|m| m.game) != Some(game.active) {
@@ -66,57 +70,18 @@ pub fn score(board: Board, turn: Slot) -> i32 {
         }
     }
 
-    for row in board.rows() {
-        if one_away_x(row) {
+    for line in board
+        .rows()
+        .into_iter()
+        .chain(board.columns())
+        .chain(board.diags())
+    {
+        if one_away_x(line) && turn == Slot::X {
             score += 5;
         }
 
-        if one_away_o(row) {
+        if one_away_o(line) || (one_away_x(line) && turn == Slot::O) {
             score += -5;
-        }
-
-        if one_away_o(row) && one_away_o(row) {
-            if turn == Slot::X {
-                score += 5;
-            } else {
-                score -= 5
-            }
-        }
-    }
-
-    for column in board.columns() {
-        if one_away_x(column) {
-            score += 5;
-        }
-
-        if one_away_o(column) {
-            score += -5;
-        }
-
-        if one_away_o(column) && one_away_o(column) {
-            if turn == Slot::X {
-                score += 5;
-            } else {
-                score -= 5;
-            }
-        }
-    }
-
-    for diag in board.diags() {
-        if one_away_x(diag) {
-            score += 5;
-        }
-
-        if one_away_o(diag) {
-            score += -5;
-        }
-
-        if one_away_o(diag) && one_away_o(diag) {
-            if turn == Slot::X {
-                score += 5;
-            } else {
-                score -= 5;
-            }
         }
     }
 
