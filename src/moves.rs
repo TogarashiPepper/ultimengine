@@ -1,3 +1,5 @@
+use std::fmt::Debug;
+
 #[cfg(feature = "savestates")]
 use bincode::{Decode, Encode};
 
@@ -6,11 +8,17 @@ use crate::{
     game::Game,
 };
 
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(PartialEq, Clone, Copy)]
 #[cfg_attr(feature = "savestates", derive(Encode, Decode))]
 pub struct Move {
     pub game: usize,
     pub index: usize,
+}
+
+impl Debug for Move {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}{}", (self.game as u8 + b'A') as char, self.index + 1)
+    }
 }
 
 pub fn is_legal(game: &Game, mv: Move) -> Result<(), &'static str> {

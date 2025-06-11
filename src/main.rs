@@ -4,13 +4,15 @@ mod game;
 mod moves;
 
 use cfg_if::cfg_if;
-use std::time::Duration;
-
-use board::{Slot, State};
-use counting::{score_game, won_for};
-use game::Game;
-use moves::{legal_moves, parse_move};
 use rand::Rng;
+use std::{collections::BTreeMap, time::Duration};
+
+use crate::{
+    board::{Slot, State},
+    counting::score_game,
+    game::Game,
+    moves::{legal_moves, parse_move},
+};
 
 fn redraw(game: &Game) {
     print!("\x1B[2J\x1B[1;1H");
@@ -26,11 +28,10 @@ fn redraw(game: &Game) {
     std::process::exit(1);
 }
 
-const DBG_INFO: bool = true;
-
 fn main() {
     #[cfg(feature = "savestates")]
     let config = bincode::config::standard();
+    let stdin = std::io::stdin();
 
     let mut game = if std::env::var("LOAD_GAME").is_ok() {
         cfg_if! {
@@ -46,27 +47,33 @@ fn main() {
     } else {
         Game::new()
     };
+
     let mut rng = rand::rng();
 
     let mut mov_buf = String::new();
 
     let mut last_eng_score = 0;
-    let stdin = std::io::stdin();
+    let mut considered_scores = BTreeMap::new();
+
     let mut last_g = Game::new();
 
     loop {
         redraw(&game);
 
-        if DBG_INFO {
+        if std::env::var("DEBUG").is_ok() {
             use std::fmt::Write;
 
             let mut bf = String::new();
 
-            write!(bf, "won: ").unwrap();
-            for b in game.boards {
-                write!(bf, "{:?}, ", won_for(b, Slot::X)).unwrap();
-            }
             write!(bf, "\nengine score for it's last move: {last_eng_score}").unwrap();
+            write!(
+                bf,
+                "\nengine considered move scores: {considered_scores:#?}"
+            )
+            .unwrap();
+            // write!(bf, "\nconsidered moves: {considered_moves:?}").unwrap();
+
+            considered_scores.clear();
 
             println!("{bf}");
         }
@@ -124,6 +131,11 @@ fn main() {
             .copied()
             .map(|mv| (mv, score_game(&game.sim_move(mv, Slot::X).unwrap())))
             .reduce(|acc, cur| {
+                considered_scores
+                    .entry(cur.1)
+                    .or_insert_with(Vec::new)
+                    .push(cur.0);
+
                 if acc.1 > cur.1 {
                     acc
                 } else if acc.1 == cur.1 {
