@@ -11,3 +11,8 @@ rand = "0.9.1"
 [features]
 savestates = ["dep:bincode"]
 benchmark = []
+
+[profile.release]
+codegen-units = 1
+lto = false
+

@@ -1,25 +1,29 @@
+//! This is an old preserved version of `counting`
+//! to be used as a benchmark to test if any changes made to `counting`
+//! have improved the engines ability or made it worse
+
 use crate::{
     board::{Board, Slot, State},
     game::Game,
 };
 
 // TODO: consolidate functions into one
-pub fn one_away_x(line: [Slot; 3]) -> bool {
+fn one_away_x(line: [Slot; 3]) -> bool {
     use Slot::{Empty, X};
 
     matches!(line, [X, X, Empty] | [Empty, X, X] | [X, Empty, X])
 }
 
-pub fn one_away_o(line: [Slot; 3]) -> bool {
+fn one_away_o(line: [Slot; 3]) -> bool {
     use Slot::{Empty, O};
 
     matches!(line, [O, O, Empty] | [Empty, O, O] | [O, Empty, O])
 }
 
-pub fn score_game(game: &Game) -> i32 {
+pub fn ref_score_game(game: &Game) -> i32 {
     // TODO: dont make moves that put the enemy in a spot where they could block a 1 away
 
-    let mut scr = score(game.shrink(), Slot::X) * 100;
+    let mut scr = score(game.shrink(), Slot::O) * 100;
 
     if let Some(last_move) = game.last_move {
         scr += score(game.boards[last_move.game], Slot::X);
@@ -52,14 +56,14 @@ pub fn score_game(game: &Game) -> i32 {
     }
 
     if game.active == 9 {
-        scr -= 40;
+        scr -= 3;
     }
 
     scr
 }
 
 // Takes a `Board` and returns a "score" for how good it is for `X`
-pub fn score(board: Board, turn: Slot) -> i32 {
+fn score(board: Board, turn: Slot) -> i32 {
     let mut score = 0;
 
     // We like corners because they open up the ability to make diagonals,
@@ -77,7 +81,7 @@ pub fn score(board: Board, turn: Slot) -> i32 {
         .chain(board.diags())
     {
         if one_away_x(line) && turn == Slot::X {
-            score += 6;
+            score += 5;
         }
 
         if one_away_o(line) || (one_away_x(line) && turn == Slot::O) {
@@ -96,7 +100,7 @@ pub fn score(board: Board, turn: Slot) -> i32 {
     score
 }
 
-pub fn won_for(board: Board, side: Slot) -> bool {
+fn won_for(board: Board, side: Slot) -> bool {
     board
         .rows()
         .into_iter()
@@ -105,7 +109,7 @@ pub fn won_for(board: Board, side: Slot) -> bool {
         .any(|line| line == [side; 3])
 }
 
-pub fn possible_to_win(board: Board) -> bool {
+fn possible_to_win(board: Board) -> bool {
     use Slot::{Empty as E, O, X};
 
     board
