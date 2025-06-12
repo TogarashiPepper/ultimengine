@@ -25,6 +25,14 @@ impl Slot {
             Slot::Disabled => '_',
         }
     }
+
+    pub fn flip(self) -> Self {
+        match self {
+            Slot::X => Slot::O,
+            Slot::O => Slot::X,
+            _ => self
+        }
+    }
 }
 
 impl Display for Slot {
@@ -42,10 +50,21 @@ pub enum State {
     Undecided,
 }
 
+impl State {
+    pub fn flip(self) -> Self {
+        match self {
+            State::Won => Self::Lost,
+            State::Lost => Self::Won,
+
+            _ => self,
+        }
+    }
+}
+
 #[repr(transparent)]
 #[derive(Debug, Clone, Copy, PartialEq)]
 #[cfg_attr(feature = "savestates", derive(Encode, Decode))]
-pub struct Board([Slot; 9]);
+pub struct Board(pub [Slot; 9]);
 
 impl Board {
     pub const fn new() -> Self {
@@ -54,10 +73,6 @@ impl Board {
 
     pub fn new_with(brd: [Slot; 9]) -> Self {
         Board(brd)
-    }
-
-    pub fn inner(self) -> [Slot; 9] {
-        self.0
     }
 
     pub const fn rows(self) -> [[Slot; 3]; 3] {

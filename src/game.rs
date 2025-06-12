@@ -75,6 +75,24 @@ impl Game {
         g
     }
 
+    pub fn flip(&self) -> Self {
+        let mut new = self.clone();
+
+        for board in &mut new.boards {
+            for sq in board.0.iter_mut() {
+                *sq = sq.flip();
+            }
+        }
+
+        for state in &mut new.states {
+            *state = state.flip();
+        }
+
+        new.state = new.state.flip();
+
+        new
+    }
+
     pub fn shrink(&self) -> Board {
         let arr = array::from_fn(|idx| match self.states[idx] {
             State::Won => Slot::X,

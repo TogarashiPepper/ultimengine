@@ -85,7 +85,7 @@ pub fn legal_moves(game: &Game) -> Vec<Move> {
     let mut mvs = vec![];
 
     for (bdx, board) in game.boards.iter().enumerate() {
-        for idx in 0..board.inner().len() {
+        for idx in 0..board.0.len() {
             if is_legal(game, Move { game: bdx, index: idx }).is_ok() {
                 mvs.push(Move {
                     game: bdx,

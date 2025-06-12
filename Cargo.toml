@@ -10,3 +10,4 @@ rand = "0.9.1"
 
 [features]
 savestates = ["dep:bincode"]
+benchmark = []

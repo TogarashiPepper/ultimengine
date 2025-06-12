@@ -4,7 +4,7 @@ mod game;
 mod moves;
 
 use cfg_if::cfg_if;
-use rand::Rng;
+use rand::{Rng, seq::IndexedRandom};
 use std::{cmp::Ordering, collections::BTreeMap, time::Duration};
 
 use crate::{
@@ -28,6 +28,7 @@ fn redraw(game: &Game) {
     std::process::exit(1);
 }
 
+#[cfg(not(feature = "benchmark"))]
 fn main() {
     #[cfg(feature = "savestates")]
     let config = bincode::config::standard();
@@ -127,8 +128,7 @@ fn main() {
         redraw(&game);
 
         let legals = legal_moves(&game)
-            .iter()
-            .copied()
+            .into_iter()
             .map(|mv| (mv, score_game(&game.sim_move(mv, Slot::X).unwrap())))
             .reduce(|acc, cur| {
                 considered_scores
@@ -157,4 +157,70 @@ fn main() {
 
         redraw(&game);
     }
+}
+
+fn show(game: &Game) {
+    print!("\x1B[2J\x1B[1;1H");
+    println!("{}", game.print());
+}
+
+#[cfg(feature = "benchmark")]
+fn main() {
+    let mut outcomes = [State::Undecided; 100000];
+    let mut rng = rand::rng();
+
+    for outcome in &mut outcomes {
+        let mut game = Game::new();
+
+        loop {
+            if game.state != State::Undecided {
+                break;
+            }
+
+            let legals = legal_moves(&game)
+                .into_iter()
+                .map(|mv| (mv, score_game(&game.sim_move(mv, Slot::X).unwrap())))
+                .reduce(|acc, cur| match acc.1.cmp(&cur.1) {
+                    Ordering::Less => cur,
+                    Ordering::Greater => acc,
+                    Ordering::Equal => {
+                        let rn: bool = rng.random();
+                        if rn { acc } else { cur }
+                    }
+                })
+                .unwrap();
+
+            game.make_move(legals.0, Slot::X).unwrap();
+
+            if game.state != State::Undecided {
+                break;
+            }
+
+            // let flipped = game.flip();
+            // let legals = legal_moves(&flipped)
+            //     .into_iter()
+            //     .map(|mv| (mv, score_game(&flipped.sim_move(mv, Slot::X).unwrap())))
+            //     .reduce(|acc, cur| match acc.1.cmp(&cur.1) {
+            //         Ordering::Less => cur,
+            //         Ordering::Greater => acc,
+            //         Ordering::Equal => {
+            //             let rn: bool = rng.random();
+            //             if rn { acc } else { cur }
+            //         }
+            //     })
+            //     .unwrap();
+            let legals = *legal_moves(&game).choose(&mut rng).unwrap();
+
+            game.make_move(legals, Slot::O).unwrap();
+        }
+
+        *outcome = game.state;
+    }
+
+    println!(
+        "won: {}, lost: {}, tied: {}",
+        outcomes.iter().filter(|o| **o == State::Won).count(),
+        outcomes.iter().filter(|o| **o == State::Lost).count(),
+        outcomes.iter().filter(|o| **o == State::Tied).count(),
+    );
 }
