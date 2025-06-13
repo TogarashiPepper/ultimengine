@@ -5,6 +5,7 @@ mod moves;
 mod ref_counting;
 
 use cfg_if::cfg_if;
+use counting::alpha_beta;
 use moves::Move;
 use rand::Rng;
 use std::{
@@ -38,6 +39,8 @@ fn redraw(game: &Game) {
 
 #[cfg(not(feature = "benchmark"))]
 fn main() {
+    use counting::alpha_beta;
+
     #[cfg(feature = "savestates")]
     let config = bincode::config::standard();
     let stdin = std::io::stdin();
@@ -149,77 +152,6 @@ fn main() {
     }
 }
 
-const MAX_DEPTH: u8 = 9;
-
-fn alpha_beta(
-    game: &Game,
-    choice: &mut Move,
-    depth: u8,
-    mut alp: i32,
-    mut bet: i32,
-    is_max: bool,
-) -> i32 {
-    if depth == MAX_DEPTH || game.state != State::Undecided {
-        return score_game(game, if is_max { Slot::O } else { Slot::X });
-    }
-
-    if is_max {
-        let mut value = i32::MIN;
-        let lgs = legal_moves(game);
-
-        for legal in lgs {
-            let sim = game.sim_move(legal, Slot::X).unwrap();
-            let eval = alpha_beta(
-                &sim,
-                choice,
-                min(depth + 1 + (sim.active == 9) as u8, MAX_DEPTH),
-                alp,
-                bet,
-                false,
-            );
-
-            if eval > value && depth == 0 {
-                *choice = legal;
-            }
-            value = max(value, eval);
-
-            if value >= bet {
-                break;
-            }
-            alp = max(alp, value);
-        }
-
-        value
-    } else {
-        let mut value = i32::MAX;
-        let lgs = legal_moves(game);
-
-        for legal in lgs {
-            let sim = game.sim_move(legal, Slot::O).unwrap();
-            let eval = alpha_beta(
-                &sim,
-                choice,
-                min(depth + 1 + 2 * (sim.active == 9) as u8, MAX_DEPTH),
-                alp,
-                bet,
-                true,
-            );
-
-            if eval < value && depth == 0 {
-                *choice = legal;
-            }
-            value = min(value, eval);
-
-            if value <= alp {
-                break;
-            }
-            bet = min(bet, value);
-        }
-
-        value
-    }
-}
-
 #[cfg(feature = "benchmark")]
 fn main() {
     let mut handles = vec![];
@@ -230,7 +162,7 @@ fn main() {
 
         let handle = std::thread::spawn(move || {
             let mut rng = rand::rng();
-            let mut outcomes = [State::Undecided; 10000];
+            let mut outcomes = [State::Undecided; 10];
 
             for outcome in &mut outcomes {
                 let mut game = Game::new();
@@ -240,24 +172,6 @@ fn main() {
                         break;
                     }
 
-                    // let mv = legal_moves(&game)
-                    //     .into_iter()
-                    //     .map(|mv| {
-                    //         (
-                    //             mv,
-                    //             score_game(&game.sim_move(mv, Slot::X).unwrap(), Slot::X),
-                    //         )
-                    //     })
-                    //     .reduce(|acc, cur| match acc.1.cmp(&cur.1) {
-                    //         Ordering::Less => cur,
-                    //         Ordering::Greater => acc,
-                    //         Ordering::Equal => {
-                    //             let rn: bool = rng.random();
-                    //             if rn { acc } else { cur }
-                    //         }
-                    //     })
-                    //     .unwrap()
-                    //     .0;
                     let mut mv = Move {
                         game: 99,
                         index: 99,
@@ -301,7 +215,7 @@ fn main() {
     let mut won = 0.0;
     let mut loss = 0.0;
     let mut tied = 0.0;
-    for x in 0..100_000 {
+    for x in 0..100 {
         let oc = rx.recv().unwrap();
 
         match oc {

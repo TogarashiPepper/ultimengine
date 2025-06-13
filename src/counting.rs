@@ -1,7 +1,83 @@
+use std::cmp::{max, min};
+
 use crate::{
     board::{Board, Slot, State},
-    game::Game,
+    game::Game, moves::{legal_moves, Move},
 };
+
+pub const MAX_DEPTH: u8 = 9;
+
+pub fn alpha_beta(
+    game: &Game,
+    choice: &mut Move,
+    depth: u8,
+    mut alp: i32,
+    mut bet: i32,
+    is_max: bool,
+) -> i32 {
+    if depth == MAX_DEPTH || game.state != State::Undecided {
+        return score_game(game, if is_max { Slot::O } else { Slot::X });
+    }
+
+    if is_max {
+        let mut value = i32::MIN;
+        let lgs = legal_moves(game);
+
+        for legal in lgs {
+            let sim = game.sim_move(legal, Slot::X).unwrap();
+            let eval = alpha_beta(
+                &sim,
+                choice,
+                min(depth + 1 + 2 * (sim.active == 9) as u8, MAX_DEPTH),
+                alp,
+                bet,
+                false,
+            );
+
+            if eval > value && depth == 0 {
+                *choice = legal;
+            }
+            value = max(value, eval);
+
+            if value >= bet {
+                break;
+            }
+            alp = max(alp, value);
+        }
+
+        value
+    } else {
+        let mut value = i32::MAX;
+        let lgs = legal_moves(game);
+
+        for legal in lgs {
+            let sim = game.sim_move(legal, Slot::O).unwrap();
+            let eval = alpha_beta(
+                &sim,
+                choice,
+                min(depth + 1 + (sim.active == 9) as u8, MAX_DEPTH),
+                alp,
+                bet,
+                true,
+            );
+
+            if eval < value && depth == 0 {
+                *choice = legal;
+            }
+            value = min(value, eval);
+
+            if value <= alp {
+                break;
+            }
+            bet = min(bet, value);
+        }
+
+        value
+    }
+}
+
+
+
 
 // TODO: consolidate functions into one
 pub fn one_away_x(line: [Slot; 3]) -> bool {
