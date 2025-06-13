@@ -16,22 +16,11 @@ pub fn one_away_o(line: [Slot; 3]) -> bool {
     matches!(line, [O, O, Empty] | [Empty, O, O] | [O, Empty, O])
 }
 
-pub fn score_game(game: &Game) -> i32 {
-    // TODO: dont make moves that put the enemy in a spot where they could block a 1 away
+pub fn score_game(game: &Game, turn: Slot) -> i32 {
+    let mut scr = score(game.shrink(), turn) * 100;
 
-    let mut scr = score(game.shrink(), Slot::X) * 100;
-
-    if let Some(last_move) = game.last_move {
-        scr += score(game.boards[last_move.game], Slot::X);
-
-        if last_move.index == game.active {
-            scr += score(game.boards[game.active], Slot::O);
-        }
-    }
-
-    if game.active != 9 && game.last_move.map(|m| m.game) != Some(game.active) {
-        let sc = score(game.boards[game.active], Slot::O);
-        scr += sc;
+    for brd in game.boards {
+        scr += score(brd, turn) / 4;
     }
 
     for st in game.states {
@@ -51,8 +40,11 @@ pub fn score_game(game: &Game) -> i32 {
         }
     }
 
-    if game.active == 9 {
-        scr -= 40;
+    if game.active == 9 && turn == Slot::X {
+        scr -= scr / 3;
+    }
+    else if game.active == 9 && turn == Slot::O {
+        scr += scr / 3;
     }
 
     scr
@@ -68,6 +60,9 @@ pub fn score(board: Board, turn: Slot) -> i32 {
         if corner == Slot::X {
             score += 1;
         }
+        else if corner == Slot::O {
+            score -= 1;
+        }
     }
 
     for line in board
@@ -80,8 +75,16 @@ pub fn score(board: Board, turn: Slot) -> i32 {
             score += 6;
         }
 
-        if one_away_o(line) || (one_away_x(line) && turn == Slot::O) {
-            score += -5;
+        if one_away_o(line) && turn == Slot::O {
+            score -= 6;
+        }
+
+        if one_away_o(line) && turn == Slot::X {
+            score += 3;
+        }
+
+        if one_away_x(line) && turn == Slot::O {
+            score -= 3;
         }
     }
 
