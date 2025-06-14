@@ -2,14 +2,15 @@ use std::array;
 
 #[cfg(feature = "savestates")]
 use bincode::{Decode, Encode};
+use rand::{rng, seq::IndexedRandom, Rng, SeedableRng};
 
 use crate::{
     board::{Board, Slot, State},
     counting::{possible_to_win, won_for},
-    moves::{is_legal, Move},
+    moves::{is_legal, legal_moves, Move},
 };
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 #[cfg_attr(feature = "savestates", derive(Encode, Decode))]
 pub struct Game {
     pub boards: [Board; 9],
@@ -55,6 +56,26 @@ impl Game {
             state: State::Undecided,
             last_move: None,
         }
+    }
+
+    pub fn random(times: u8) -> Game {
+        let mut g = Game::new();
+        let mut rng = rand::rngs::SmallRng::seed_from_u64(42);
+        let mut side = Slot::X;
+
+        for _ in 0..times {
+            let lgms = legal_moves(&g);
+
+            if lgms.is_empty() {
+                break;
+            }
+
+            g.make_move(*lgms.choose(&mut rng).unwrap(), side).unwrap();
+
+            side = side.flip();
+        }
+
+        g
     }
 
     pub fn _test() -> Self {

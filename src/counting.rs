@@ -21,7 +21,19 @@ pub fn alpha_beta(
 
     if is_max {
         let mut value = i32::MIN;
-        let lgs = legal_moves(game);
+        let mut lgs = legal_moves(game);
+
+        // Scoring the games to sort them is costly
+        // but alpha-beta pruning benefits so much from
+        // a sorted list that it's worth it (see sortdepthanalysis.txt)
+        if depth <= 3 {
+            lgs.sort_by(|a, b| {
+                let asim = game.sim_move(*a, Slot::X).unwrap();
+                let bsim = game.sim_move(*b, Slot::X).unwrap();
+
+                score_game(&bsim, Slot::X).cmp(&score_game(&asim, Slot::X))
+            }); 
+        }
 
         for legal in lgs {
             let sim = game.sim_move(legal, Slot::X).unwrap();
@@ -48,7 +60,16 @@ pub fn alpha_beta(
         value
     } else {
         let mut value = i32::MAX;
-        let lgs = legal_moves(game);
+        let mut lgs = legal_moves(game);
+
+        if depth <= 3 {
+            lgs.sort_by(|a, b| {
+                let asim = game.sim_move(*a, Slot::X).unwrap();
+                let bsim = game.sim_move(*b, Slot::X).unwrap();
+
+                score_game(&asim, Slot::X).cmp(&score_game(&bsim, Slot::X))
+            }); 
+        }
 
         for legal in lgs {
             let sim = game.sim_move(legal, Slot::O).unwrap();

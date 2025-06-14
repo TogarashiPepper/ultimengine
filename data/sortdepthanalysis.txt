@@ -1,0 +1,19 @@
+sort depth <= 3 (b, a)
+won: 96, lost: 2, tied: 2
+./target/release/ultimengine  393.41s user 2.93s system 688% cpu 57.580 total
+
+sort depth <= 4 (b, a)
+won: 94, lost: 3, tied: 3
+./target/release/ultimengine  384.45s user 2.91s system 682% cpu 56.742 total
+
+sort depth <= 5 (b, a)
+won: 90, lost: 5, tied: 5
+./target/release/ultimengine  409.09s user 3.54s system 677% cpu 1:00.90 total
+
+sort depth <= 3 (a, b):
+won: 93, lost: 5, tied: 2
+./target/release/ultimengine  523.55s user 4.87s system 683% cpu 1:17.32 total
+
+no sort:
+won: 94, lost: 3, tied: 3
+./target/release/ultimengine  475.23s user 4.42s system 670% cpu 1:11.54 total

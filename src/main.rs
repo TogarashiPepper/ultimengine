@@ -3,23 +3,23 @@ mod counting;
 mod game;
 mod moves;
 mod ref_counting;
+mod benchmark;
 
 use cfg_if::cfg_if;
-use counting::alpha_beta;
-use moves::Move;
 use rand::Rng;
+
 use std::{
     cmp::{Ordering, max, min},
     collections::BTreeMap,
     sync::mpsc::{Receiver, Sender},
-    time::Duration,
+    time::{Duration, Instant},
 };
 
 use crate::{
     board::{Slot, State},
-    counting::score_game,
+    counting::{score_game, alpha_beta},
     game::Game,
-    moves::{legal_moves, parse_move},
+    moves::{Move, legal_moves, parse_move},
     ref_counting::ref_score_game,
 };
 
@@ -39,11 +39,11 @@ fn redraw(game: &Game) {
 
 #[cfg(not(feature = "benchmark"))]
 fn main() {
-    use counting::alpha_beta;
-
     #[cfg(feature = "savestates")]
     let config = bincode::config::standard();
     let stdin = std::io::stdin();
+
+    let instant = Instant::now();
 
     let mut game = if std::env::var("LOAD_GAME").is_ok() {
         cfg_if! {
@@ -60,35 +60,14 @@ fn main() {
         Game::new()
     };
 
-    let mut rng = rand::rng();
-
     let mut mov_buf = String::new();
 
     let mut last_eng_score = 0;
-    let mut considered_scores: BTreeMap<i32, Vec<Move>> = BTreeMap::new();
 
     let mut last_g = Game::new();
 
     loop {
         redraw(&game);
-
-        if std::env::var("DEBUG").is_ok() {
-            use std::fmt::Write;
-
-            let mut bf = String::new();
-
-            write!(bf, "\nengine score for it's last move: {last_eng_score}").unwrap();
-            write!(
-                bf,
-                "\nengine considered move scores: {considered_scores:#?}"
-            )
-            .unwrap();
-            // write!(bf, "\nconsidered moves: {considered_moves:?}").unwrap();
-
-            considered_scores.clear();
-
-            println!("{bf}");
-        }
 
         print!(
             "Enter your move (ex. a5, active board: {}): ",
@@ -154,101 +133,5 @@ fn main() {
 
 #[cfg(feature = "benchmark")]
 fn main() {
-    let mut handles = vec![];
-    let (tx, rx): (Sender<State>, Receiver<State>) = std::sync::mpsc::channel();
-
-    for _ in 0..10 {
-        let tx = tx.clone();
-
-        let handle = std::thread::spawn(move || {
-            let mut rng = rand::rng();
-            let mut outcomes = [State::Undecided; 10];
-
-            for outcome in &mut outcomes {
-                let mut game = Game::new();
-
-                loop {
-                    if game.state != State::Undecided {
-                        break;
-                    }
-
-                    let mut mv = Move {
-                        game: 99,
-                        index: 99,
-                    };
-
-                    alpha_beta(&game, &mut mv, 0, i32::MIN, i32::MAX, true);
-
-                    game.make_move(mv, Slot::X).unwrap();
-
-                    if game.state != State::Undecided {
-                        break;
-                    }
-
-                    let flipped = game.flip();
-                    let legals = legal_moves(&flipped)
-                        .into_iter()
-                        .map(|mv| (mv, ref_score_game(&flipped.sim_move(mv, Slot::X).unwrap())))
-                        .reduce(|acc, cur| match acc.1.cmp(&cur.1) {
-                            Ordering::Less => cur,
-                            Ordering::Greater => acc,
-                            Ordering::Equal => {
-                                let rn: bool = rng.random();
-                                if rn { acc } else { cur }
-                            }
-                        })
-                        .unwrap();
-
-                    game.make_move(legals.0, Slot::O).unwrap();
-                }
-
-                *outcome = game.state;
-                tx.send(game.state).unwrap();
-            }
-
-            outcomes
-        });
-
-        handles.push(handle);
-    }
-
-    let mut won = 0.0;
-    let mut loss = 0.0;
-    let mut tied = 0.0;
-    for x in 0..100 {
-        let oc = rx.recv().unwrap();
-
-        match oc {
-            State::Won => won += 1.0,
-            State::Lost => loss += 1.0,
-            State::Tied => tied += 1.0,
-            State::Undecided => {}
-        }
-
-        println!(
-            "{:0.3}% ({x}): finished (state: {:?})",
-            x as f64 / 100_000.0 * 100.0,
-            oc
-        );
-        println!(
-            "win%: {:0.3} ({won}), loss%: {:0.3} ({loss}), tie%: {:0.3} ({tied})\n",
-            won / x as f64 * 100.0,
-            loss / x as f64 * 100.0,
-            tied / x as f64 * 100.0
-        )
-    }
-
-    let mut won = 0;
-    let mut loss = 0;
-    let mut tied = 0;
-
-    for handle in handles {
-        let sub_outcomes = handle.join().unwrap();
-
-        won += sub_outcomes.iter().filter(|e| **e == State::Won).count();
-        loss += sub_outcomes.iter().filter(|e| **e == State::Lost).count();
-        tied += sub_outcomes.iter().filter(|e| **e == State::Tied).count();
-    }
-
-    println!("won: {}, lost: {}, tied: {}", won, loss, tied);
+    benchmark::benchmark();
 }
