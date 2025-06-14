@@ -1,4 +1,4 @@
-use std::cmp::{max, min};
+use std::{cmp::{max, min}, sync::Mutex};
 
 use crate::{
     board::{Board, Slot, State},
@@ -22,6 +22,7 @@ pub fn alpha_beta(
     if is_max {
         let mut value = i32::MIN;
         let mut lgs = legal_moves(game);
+        let len = lgs.len();
 
         // Scoring the games to sort them is costly
         // but alpha-beta pruning benefits so much from
@@ -40,7 +41,7 @@ pub fn alpha_beta(
             let eval = alpha_beta(
                 &sim,
                 choice,
-                min(depth + 1 + 2 * (sim.active == 9) as u8, MAX_DEPTH),
+                min(depth + (len >= 3) as u8 + 2 * (sim.active == 9) as u8, MAX_DEPTH),
                 alp,
                 bet,
                 false,
@@ -61,6 +62,7 @@ pub fn alpha_beta(
     } else {
         let mut value = i32::MAX;
         let mut lgs = legal_moves(game);
+        let len = lgs.len();
 
         if depth <= 3 {
             lgs.sort_by(|a, b| {
@@ -76,7 +78,7 @@ pub fn alpha_beta(
             let eval = alpha_beta(
                 &sim,
                 choice,
-                min(depth + 1 + (sim.active == 9) as u8, MAX_DEPTH),
+                min(depth + (len >= 3) as u8 + (sim.active == 9) as u8, MAX_DEPTH),
                 alp,
                 bet,
                 true,

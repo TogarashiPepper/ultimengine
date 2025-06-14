@@ -10,7 +10,7 @@ use crate::{
     board::{Slot, State},
     counting::alpha_beta,
     game::Game,
-    moves::{Move, legal_moves},
+    moves::{legal_moves, Move},
     ref_counting::ref_score_game,
 };
 
@@ -114,7 +114,7 @@ pub fn benchmark() {
         );
         println!(
             "{:0.3}% ({x}): finished",
-            x as f64 / 100_000.0 * 100.0,
+            x as f64 / 160.0 * 100.0,
         );
         println!(
             "win%: {:0.3} ({won}), loss%: {:0.3} ({loss}), tie%: {:0.3} ({tied})",
