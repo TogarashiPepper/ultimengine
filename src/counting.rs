@@ -1,4 +1,4 @@
-use std::{cmp::{max, min}, sync::Mutex};
+use std::cmp::{max, min};
 
 use crate::{
     board::{Board, Slot, State},
@@ -41,7 +41,7 @@ pub fn alpha_beta(
             let eval = alpha_beta(
                 &sim,
                 choice,
-                min(depth + (len >= 3) as u8 + 2 * (sim.active == 9) as u8, MAX_DEPTH),
+                min(depth + (len >= 2) as u8 + 2 * (sim.active == 9) as u8, MAX_DEPTH),
                 alp,
                 bet,
                 false,
@@ -78,7 +78,7 @@ pub fn alpha_beta(
             let eval = alpha_beta(
                 &sim,
                 choice,
-                min(depth + (len >= 3) as u8 + (sim.active == 9) as u8, MAX_DEPTH),
+                min(depth + (len >= 2) as u8 + (sim.active == 9) as u8, MAX_DEPTH),
                 alp,
                 bet,
                 true,
