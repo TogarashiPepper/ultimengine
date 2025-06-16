@@ -31,7 +31,7 @@ pub fn bench_alphabeta(c: &mut Criterion) {
                     index: 99,
                 };
 
-                alpha_beta(&game, &mut mv, 0, i32::MIN, i32::MAX, true);
+                alpha_beta::<true>(&game, &mut mv, 0, i32::MIN, i32::MAX);
 
                 game.make_move(mv, Slot::X).unwrap();
 
@@ -71,7 +71,7 @@ pub fn bench_one_move(c: &mut Criterion) {
             index: 99,
         };
 
-        alpha_beta(&g, &mut mv, 0, i32::MIN, i32::MAX, true);
+        alpha_beta::<true>(&g, &mut mv, 0, i32::MIN, i32::MAX);
 
         g.make_move(mv, Slot::X).unwrap();
     }, BatchSize::SmallInput));

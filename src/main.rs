@@ -6,21 +6,16 @@ mod ref_counting;
 mod benchmark;
 
 use cfg_if::cfg_if;
-use rand::Rng;
 
-use std::{
-    cmp::{Ordering, max, min},
-    collections::BTreeMap,
-    sync::mpsc::{Receiver, Sender},
-    time::{Duration, Instant},
-};
+use std::
+    time::Instant
+;
 
 use crate::{
     board::{Slot, State},
-    counting::{score_game, alpha_beta},
+    counting::alpha_beta,
     game::Game,
-    moves::{Move, legal_moves, parse_move},
-    ref_counting::ref_score_game,
+    moves::{Move, parse_move},
 };
 
 fn redraw(game: &Game) {
@@ -122,7 +117,7 @@ fn main() {
             index: 99,
         };
 
-        last_eng_score = alpha_beta(&game, &mut mv, 0, i32::MIN, i32::MAX, true);
+        last_eng_score = alpha_beta::<true>(&game, &mut mv, 0, i32::MIN, i32::MAX);
         last_g = game.clone();
 
         game.make_move(mv, Slot::X).unwrap();

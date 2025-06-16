@@ -1,0 +1,12 @@
+optimizations to be made:
+look at optimizing score_game
+PGO / BOLT
+Late Move Reduction
+More Efficient Board Representation (similar to bitboards perhaps)
+Making legal_moves an iterator to save on allocations
+Better search function(?)
+https://www.chessprogramming.org/Negamax
+look into if self-play SPRT could help replace benchmark.rs
+Ensure score_game is symmetric
+make alpha_beta branchless
+

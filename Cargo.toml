@@ -21,6 +21,6 @@ benchmark = []
 
 [profile.release]
 codegen-units = 1
-lto = false
+lto = "fat"
 debug = true
 

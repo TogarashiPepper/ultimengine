@@ -2,27 +2,28 @@ use std::cmp::{max, min};
 
 use crate::{
     board::{Board, Slot, State},
-    game::Game, moves::{legal_moves, Move},
+    game::Game,
+    moves::{Move, legal_moves},
 };
 
 pub const MAX_DEPTH: u8 = 9;
 
-pub fn alpha_beta(
+pub fn alpha_beta<const IS_MAX: bool>(
     game: &Game,
     choice: &mut Move,
     depth: u8,
     mut alp: i32,
     mut bet: i32,
-    is_max: bool,
+    // is_max: bool,
 ) -> i32 {
     if depth == MAX_DEPTH || game.state != State::Undecided {
-        return score_game(game, if is_max { Slot::O } else { Slot::X });
+        return score_game(game, if IS_MAX { Slot::O } else { Slot::X });
     }
 
-    if is_max {
+    let mut lgs = legal_moves(game);
+    let len = lgs.len();
+    if IS_MAX {
         let mut value = i32::MIN;
-        let mut lgs = legal_moves(game);
-        let len = lgs.len();
 
         // Scoring the games to sort them is costly
         // but alpha-beta pruning benefits so much from
@@ -33,18 +34,21 @@ pub fn alpha_beta(
                 let bsim = game.sim_move(*b, Slot::X).unwrap();
 
                 score_game(&bsim, Slot::X).cmp(&score_game(&asim, Slot::X))
-            }); 
+            });
         }
 
         for legal in lgs {
             let sim = game.sim_move(legal, Slot::X).unwrap();
-            let eval = alpha_beta(
+            let eval = alpha_beta::<false>(
                 &sim,
                 choice,
-                min(depth + (len >= 2) as u8 + 2 * (sim.active == 9) as u8, MAX_DEPTH),
+                min(
+                    depth + (len >= 2) as u8 + 2 * (sim.active == 9) as u8,
+                    MAX_DEPTH,
+                ),
                 alp,
                 bet,
-                false,
+                // false,
             );
 
             if eval > value && depth == 0 {
@@ -61,8 +65,6 @@ pub fn alpha_beta(
         value
     } else {
         let mut value = i32::MAX;
-        let mut lgs = legal_moves(game);
-        let len = lgs.len();
 
         if depth <= 3 {
             lgs.sort_by(|a, b| {
@@ -70,18 +72,21 @@ pub fn alpha_beta(
                 let bsim = game.sim_move(*b, Slot::X).unwrap();
 
                 score_game(&asim, Slot::X).cmp(&score_game(&bsim, Slot::X))
-            }); 
+            });
         }
 
         for legal in lgs {
             let sim = game.sim_move(legal, Slot::O).unwrap();
-            let eval = alpha_beta(
+            let eval = alpha_beta::<true>(
                 &sim,
                 choice,
-                min(depth + (len >= 2) as u8 + (sim.active == 9) as u8, MAX_DEPTH),
+                min(
+                    depth + (len >= 2) as u8 + (sim.active == 9) as u8,
+                    MAX_DEPTH,
+                ),
                 alp,
                 bet,
-                true,
+                // true,
             );
 
             if eval < value && depth == 0 {
@@ -99,16 +104,15 @@ pub fn alpha_beta(
     }
 }
 
-
-
-
 // TODO: consolidate functions into one
+#[inline]
 pub fn one_away_x(line: [Slot; 3]) -> bool {
     use Slot::{Empty, X};
 
     matches!(line, [X, X, Empty] | [Empty, X, X] | [X, Empty, X])
 }
 
+#[inline]
 pub fn one_away_o(line: [Slot; 3]) -> bool {
     use Slot::{Empty, O};
 
@@ -124,15 +128,6 @@ pub fn score_game(game: &Game, turn: Slot) -> i32 {
 
     for st in game.states {
         if st == State::Won {
-            // TODO: better amount,
-            // due to issue with following board:
-            //  X | X | O
-            // -----------
-            //    | X |
-            // -----------
-            //    |   |
-            //  computer would move in 4 because it made the score 21, which was higher
-            //  than the previous win score of +6 so it wouldnt win the board
             scr += 100;
         } else if st == State::Lost {
             scr -= 100;
@@ -141,8 +136,7 @@ pub fn score_game(game: &Game, turn: Slot) -> i32 {
 
     if game.active == 9 && turn == Slot::X {
         scr -= scr / 3;
-    }
-    else if game.active == 9 && turn == Slot::O {
+    } else if game.active == 9 && turn == Slot::O {
         scr += scr / 3;
     }
 
@@ -150,6 +144,7 @@ pub fn score_game(game: &Game, turn: Slot) -> i32 {
 }
 
 // Takes a `Board` and returns a "score" for how good it is for `X`
+#[inline]
 pub fn score(board: Board, turn: Slot) -> i32 {
     let mut score = 0;
 
@@ -158,8 +153,7 @@ pub fn score(board: Board, turn: Slot) -> i32 {
     for corner in [board[0], board[2], board[6], board[8]] {
         if corner == Slot::X {
             score += 1;
-        }
-        else if corner == Slot::O {
+        } else if corner == Slot::O {
             score -= 1;
         }
     }
@@ -198,6 +192,7 @@ pub fn score(board: Board, turn: Slot) -> i32 {
     score
 }
 
+#[inline]
 pub fn won_for(board: Board, side: Slot) -> bool {
     board
         .rows()

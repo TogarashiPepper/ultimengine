@@ -4,7 +4,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use rand::{Rng, rngs::ThreadRng};
+use rand::{rngs::ThreadRng, Rng};
 
 use crate::{
     board::{Slot, State},
@@ -27,7 +27,7 @@ fn play_game(rng: &mut ThreadRng) -> State {
             index: 99,
         };
 
-        alpha_beta(&game, &mut mv, 0, i32::MIN, i32::MAX, true);
+        alpha_beta::<true>(&game, &mut mv, 0, i32::MIN, i32::MAX);
 
         game.make_move(mv, Slot::X).unwrap();
 
@@ -65,7 +65,7 @@ pub fn benchmark() {
 
         let handle = std::thread::spawn(move || {
             let mut rng = rand::rng();
-            let mut outcomes = [State::Undecided; 20];
+            let mut outcomes = [State::Undecided; 45];
 
             for outcome in &mut outcomes {
                 *outcome = play_game(&mut rng);
@@ -86,7 +86,7 @@ pub fn benchmark() {
 
     loop {
         let x = (won + loss + tied) as u128;
-        if x >= 160 {
+        if x >= 360 {
             break;
         }
 
@@ -114,7 +114,7 @@ pub fn benchmark() {
         );
         println!(
             "{:0.3}% ({x}): finished",
-            x as f64 / 160.0 * 100.0,
+            x as f64 / 360.0 * 100.0,
         );
         println!(
             "win%: {:0.3} ({won}), loss%: {:0.3} ({loss}), tie%: {:0.3} ({tied})",
