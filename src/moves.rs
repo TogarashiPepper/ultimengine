@@ -82,11 +82,19 @@ pub fn parse_move(input: &str, active: usize) -> Result<Move, &'static str> {
 }
 
 pub fn legal_moves(game: &Game) -> Vec<Move> {
-    let mut mvs = vec![];
+    let mut mvs = Vec::with_capacity(81);
 
     for (bdx, board) in game.boards.iter().enumerate() {
         for idx in 0..board.0.len() {
-            if is_legal(game, Move { game: bdx, index: idx }).is_ok() {
+            if is_legal(
+                game,
+                Move {
+                    game: bdx,
+                    index: idx,
+                },
+            )
+            .is_ok()
+            {
                 mvs.push(Move {
                     game: bdx,
                     index: idx,
@@ -97,3 +105,4 @@ pub fn legal_moves(game: &Game) -> Vec<Move> {
 
     mvs
 }
+

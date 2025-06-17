@@ -56,9 +56,7 @@ fn main() {
     };
 
     let mut mov_buf = String::new();
-
     let mut last_eng_score = 0;
-
     let mut last_g = Game::new();
 
     loop {
@@ -112,12 +110,9 @@ fn main() {
 
         redraw(&game);
 
-        let mut mv = Move {
-            game: 99,
-            index: 99,
-        };
+        let (scr, mv) = alpha_beta(&game);
 
-        last_eng_score = alpha_beta::<true>(&game, &mut mv, 0, i32::MIN, i32::MAX);
+        last_eng_score = scr;
         last_g = game.clone();
 
         game.make_move(mv, Slot::X).unwrap();

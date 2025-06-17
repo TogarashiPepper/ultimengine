@@ -10,7 +10,7 @@ use crate::{
     board::{Slot, State},
     counting::alpha_beta,
     game::Game,
-    moves::{legal_moves, Move},
+    moves::legal_moves,
     ref_counting::ref_score_game,
 };
 
@@ -22,12 +22,7 @@ fn play_game(rng: &mut ThreadRng) -> State {
             break;
         }
 
-        let mut mv = Move {
-            game: 99,
-            index: 99,
-        };
-
-        alpha_beta::<true>(&game, &mut mv, 0, i32::MIN, i32::MAX);
+        let mv = alpha_beta(&game).1;
 
         game.make_move(mv, Slot::X).unwrap();
 

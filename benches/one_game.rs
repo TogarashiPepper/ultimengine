@@ -26,14 +26,9 @@ pub fn bench_alphabeta(c: &mut Criterion) {
                     break;
                 }
 
-                let mut mv = Move {
-                    game: 99,
-                    index: 99,
-                };
+                let mv = alpha_beta(&game);
 
-                alpha_beta::<true>(&game, &mut mv, 0, i32::MIN, i32::MAX);
-
-                game.make_move(mv, Slot::X).unwrap();
+                game.make_move(mv.1, Slot::X).unwrap();
 
                 if game.state != State::Undecided {
                     break;
@@ -66,12 +61,7 @@ pub fn bench_scoring(c: &mut Criterion) {
 
 pub fn bench_one_move(c: &mut Criterion) {
     c.bench_function("one move", |b| b.iter_batched(|| Game::random(20), |mut g| {
-        let mut mv = Move {
-            game: 99,
-            index: 99,
-        };
-
-        alpha_beta::<true>(&g, &mut mv, 0, i32::MIN, i32::MAX);
+        let mv = alpha_beta(&g).1;
 
         g.make_move(mv, Slot::X).unwrap();
     }, BatchSize::SmallInput));

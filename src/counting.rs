@@ -8,13 +8,23 @@ use crate::{
 
 pub const MAX_DEPTH: u8 = 9;
 
-pub fn alpha_beta<const IS_MAX: bool>(
+pub fn alpha_beta(game: &Game) -> (i32, Move) {
+    let mut mv = Move {
+        game: 99,
+        index: 99,
+    };
+
+    let scr = _alpha_beta::<true>(game, &mut mv, 0, i32::MIN, i32::MAX);
+
+    (scr, mv)
+}
+
+fn _alpha_beta<const IS_MAX: bool>(
     game: &Game,
     choice: &mut Move,
     depth: u8,
     mut alp: i32,
     mut bet: i32,
-    // is_max: bool,
 ) -> i32 {
     if depth == MAX_DEPTH || game.state != State::Undecided {
         return score_game(game, if IS_MAX { Slot::O } else { Slot::X });
@@ -39,7 +49,7 @@ pub fn alpha_beta<const IS_MAX: bool>(
 
         for legal in lgs {
             let sim = game.sim_move(legal, Slot::X).unwrap();
-            let eval = alpha_beta::<false>(
+            let eval = _alpha_beta::<false>(
                 &sim,
                 choice,
                 min(
@@ -48,7 +58,6 @@ pub fn alpha_beta<const IS_MAX: bool>(
                 ),
                 alp,
                 bet,
-                // false,
             );
 
             if eval > value && depth == 0 {
@@ -77,7 +86,7 @@ pub fn alpha_beta<const IS_MAX: bool>(
 
         for legal in lgs {
             let sim = game.sim_move(legal, Slot::O).unwrap();
-            let eval = alpha_beta::<true>(
+            let eval = _alpha_beta::<true>(
                 &sim,
                 choice,
                 min(
@@ -86,7 +95,6 @@ pub fn alpha_beta<const IS_MAX: bool>(
                 ),
                 alp,
                 bet,
-                // true,
             );
 
             if eval < value && depth == 0 {
