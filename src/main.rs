@@ -1,21 +1,19 @@
+mod benchmark;
 mod board;
 mod counting;
 mod game;
 mod moves;
 mod ref_counting;
-mod benchmark;
 
 use cfg_if::cfg_if;
 
-use std::
-    time::Instant
-;
+use std::time::Instant;
 
 use crate::{
     board::{Slot, State},
     counting::alpha_beta,
     game::Game,
-    moves::{Move, parse_move},
+    moves::parse_move,
 };
 
 fn redraw(game: &Game) {
@@ -32,8 +30,11 @@ fn redraw(game: &Game) {
     std::process::exit(1);
 }
 
-#[cfg(not(feature = "benchmark"))]
 fn main() {
+    if option_env!("BENCHMARK").is_some() || option_env!("BENCHMARK_PERF").is_some() {
+        return benchmark::benchmark();
+    }
+
     #[cfg(feature = "savestates")]
     let config = bincode::config::standard();
     let stdin = std::io::stdin();
@@ -119,9 +120,4 @@ fn main() {
 
         redraw(&game);
     }
-}
-
-#[cfg(feature = "benchmark")]
-fn main() {
-    benchmark::benchmark();
 }

@@ -17,7 +17,6 @@ harness = false
 
 [features]
 savestates = ["dep:bincode"]
-benchmark = []
 
 [profile.release]
 codegen-units = 1

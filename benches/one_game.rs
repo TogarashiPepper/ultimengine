@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 use criterion::{BatchSize, Criterion, SamplingMode, criterion_group, criterion_main};
-use rand::seq::IndexedRandom;
+use rand::{SeedableRng, seq::IndexedRandom};
 use ultimengine::{
     board::{Slot, State},
     counting::{alpha_beta, score_game},
@@ -17,29 +17,35 @@ pub fn bench_alphabeta(c: &mut Criterion) {
         .measurement_time(Duration::from_secs(150));
 
     group.bench_function("one game", |b| {
-        b.iter(|| {
-            let mut game = Game::new();
-            let mut rng = rand::rng();
+        b.iter_batched(
+            || {
+                let game = Game::new();
+                let rng = rand::rngs::SmallRng::seed_from_u64(42);
 
-            loop {
-                if game.state != State::Undecided {
-                    break;
+                (game, rng)
+            },
+            |(mut game, mut rng)| {
+                loop {
+                    if game.state != State::Undecided {
+                        break;
+                    }
+
+                    let mv = alpha_beta(&game);
+
+                    game.make_move(mv.1, Slot::X).unwrap();
+
+                    if game.state != State::Undecided {
+                        break;
+                    }
+
+                    let legals = legal_moves(&game);
+
+                    game.make_move(*legals.choose(&mut rng).unwrap(), Slot::O)
+                        .unwrap();
                 }
-
-                let mv = alpha_beta(&game);
-
-                game.make_move(mv.1, Slot::X).unwrap();
-
-                if game.state != State::Undecided {
-                    break;
-                }
-
-                let legals = legal_moves(&game);
-
-                game.make_move(*legals.choose(&mut rng).unwrap(), Slot::O)
-                    .unwrap();
-            }
-        });
+            },
+            BatchSize::SmallInput,
+        );
     });
 
     group.finish();
@@ -60,11 +66,17 @@ pub fn bench_scoring(c: &mut Criterion) {
 }
 
 pub fn bench_one_move(c: &mut Criterion) {
-    c.bench_function("one move", |b| b.iter_batched(|| Game::random(20), |mut g| {
-        let mv = alpha_beta(&g).1;
+    c.bench_function("one move", |b| {
+        b.iter_batched(
+            || Game::random(20),
+            |mut g| {
+                let mv = alpha_beta(&g).1;
 
-        g.make_move(mv, Slot::X).unwrap();
-    }, BatchSize::SmallInput));
+                g.make_move(mv, Slot::X).unwrap();
+            },
+            BatchSize::SmallInput,
+        )
+    });
 }
 
 criterion_group!(benches, bench_scoring, bench_one_move, bench_alphabeta);

@@ -4,7 +4,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use rand::{rngs::ThreadRng, Rng};
+use rand::{rngs::ThreadRng, seq::IndexedRandom, Rng};
 
 use crate::{
     board::{Slot, State},
@@ -55,12 +55,15 @@ pub fn benchmark() {
     let (tx, rx): (Sender<State>, Receiver<State>) = std::sync::mpsc::channel();
     let start = Instant::now();
 
-    for _ in 0..8 {
+    const IS_PERF_FOCUSED: bool = option_env!("BENCH_PERF").is_some();
+    const NUM_THREADS: usize = if IS_PERF_FOCUSED { 1 } else { 8 };
+
+    for _ in 0..NUM_THREADS {
         let tx = tx.clone();
 
         let handle = std::thread::spawn(move || {
             let mut rng = rand::rng();
-            let mut outcomes = [State::Undecided; 45];
+            let mut outcomes = [State::Undecided; 360 / NUM_THREADS];
 
             for outcome in &mut outcomes {
                 *outcome = play_game(&mut rng);
@@ -103,14 +106,12 @@ pub fn benchmark() {
 
         print!("\x1B[2J\x1B[1;1H");
         println!(
-            "time spent: {}s, estimated time remaining: {}s",
+            "time spent: {}s, estimated time remaining: {}s (avg. time/game: {:0.2}s)",
             elapsed.as_secs(),
-            (160 - x) * (elapsed.as_millis() / x) / 1000
+            (360 - x) * (elapsed.as_millis() / x) / 1000,
+            elapsed.as_secs() as f64 / x as f64,
         );
-        println!(
-            "{:0.3}% ({x}): finished",
-            x as f64 / 360.0 * 100.0,
-        );
+        println!("{:0.3}% ({x}): finished", x as f64 / 360.0 * 100.0,);
         println!(
             "win%: {:0.3} ({won}), loss%: {:0.3} ({loss}), tie%: {:0.3} ({tied})",
             won / x as f32 * 100.0,
