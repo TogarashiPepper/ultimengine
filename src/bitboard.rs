@@ -104,79 +104,122 @@ impl BitBoard {
             _ => unreachable!(),
         }
     }
-
-    pub const fn one_aways_x(self) -> i32 {
+    
+    #[cfg(not(all(target_arch = "aarch64", target_feature = "neon")))]
+    const fn one_aways<const FOR_X: bool>(self) -> i32 {
         let mut n = 0;
         let mut idx = 0;
+        let arr = const {
+            if FOR_X {
+                ONE_AWAY_X
+            }
+            else {
+                ONE_AWAY_O
+            }
+        };
 
         loop {
-            if idx == 24 {
+            if idx >= 24 {
                 break;
             }
 
-            let b = ONE_AWAY_X[idx];
+            let masks = arr[idx];
 
             n += (b == (b & self.0)) as i32;
 
-            idx += 1;
+            idx += 8;
         }
 
         n
     }
 
-    pub const fn one_aways_o(self) -> i32 {
+    #[cfg(all(target_arch = "aarch64", target_feature = "neon"))]
+    fn one_aways<const FOR_X: bool>(self) -> i32 {
+        use std::arch::aarch64::{
+            vaddvq_u32, vandq_u32, vceqq_u32, vld1q_dup_u32, vld1q_u32_x3, vmvnq_u32, vshrq_n_u32
+        };
+
         let mut n = 0;
         let mut idx = 0;
+        let arr = const { if FOR_X { ONE_AWAY_X } else { ONE_AWAY_O } };
+        let brd = unsafe { vld1q_dup_u32(&self.0 as *const u32) };
+
+        let zero: u32 = 0;
+        let zeros = unsafe { vld1q_dup_u32(&zero as *const u32) };
 
         loop {
-            if idx == 24 {
+            if idx >= 24 {
                 break;
             }
 
-            let b = ONE_AWAY_O[idx];
+            let r = unsafe {
+                let masks = vld1q_u32_x3(arr.as_ptr().add(idx));
 
-            n += (b == (b & self.0)) as i32;
+                let and0 = vandq_u32(masks.0, brd);
+                let and1 = vandq_u32(masks.1, brd);
+                let and2 = vandq_u32(masks.2, brd);
 
-            idx += 1;
+                let eq0 = vceqq_u32(and0, masks.0);
+                let eq1 = vceqq_u32(and1, masks.1);
+                let eq2 = vceqq_u32(and2, masks.2);
+
+                let eq0 = vceqq_u32(vmvnq_u32(eq0), zeros);
+                let eq1 = vceqq_u32(vmvnq_u32(eq1), zeros);
+                let eq2 = vceqq_u32(vmvnq_u32(eq2), zeros);
+
+                let shf0 = vshrq_n_u32::<31>(eq0);
+                let shf1 = vshrq_n_u32::<31>(eq1);
+                let shf2 = vshrq_n_u32::<31>(eq2);
+
+                let cnt0 = vaddvq_u32(shf0);
+                let cnt1 = vaddvq_u32(shf1);
+                let cnt2 = vaddvq_u32(shf2);
+
+                cnt0 + cnt1 + cnt2
+            };
+
+            n += r as i32;
+            // n += (b == (b & self.0)) as i32;
+
+            idx += 12;
         }
 
         n
+    }
+
+    pub fn one_aways_x(self) -> i32 {
+        self.one_aways::<true>()
+    }
+
+    pub fn one_aways_o(self) -> i32 {
+        self.one_aways::<false>()
+    }
+
+    const fn won_by<const FOR_X: bool>(self) -> bool {
+        let mut idx = 0;
+        let arr = const { if FOR_X { WON_BY_X } else { WON_BY_O } };
+
+        loop {
+            if idx == 8 {
+                break false;
+            }
+
+            let b = arr[idx];
+
+            if b == (b & self.0) {
+                break true;
+            }
+
+            idx += 1;
+        }
     }
 
     pub const fn won_by_x(self) -> bool {
-        let mut idx = 0;
-
-        loop {
-            if idx == 8 {
-                break false;
-            }
-
-            let b = WON_BY_X[idx];
-
-            if b == (b & self.0) {
-                break true;
-            }
-
-            idx += 1;
-        }
+        self.won_by::<true>()
     }
 
     pub const fn won_by_o(self) -> bool {
-        let mut idx = 0;
-
-        loop {
-            if idx == 8 {
-                break false;
-            }
-
-            let b = WON_BY_O[idx];
-
-            if b == (b & self.0) {
-                break true;
-            }
-
-            idx += 1;
-        }
+        self.won_by::<false>()
     }
 }
 

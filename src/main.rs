@@ -74,7 +74,7 @@ fn main() {
             "undo" => std::mem::swap(&mut game, &mut last_g),
             "engscore" => {
                 print!("engines score of its last move: {}", last_eng_score);
-                stdout().flush();
+                stdout().flush().unwrap();
 
                 stdin.read_line(&mut mov_buf).unwrap();
                 continue;
