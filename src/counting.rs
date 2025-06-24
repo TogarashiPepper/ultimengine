@@ -4,6 +4,7 @@ use crate::{
     bitboard::BitBoard,
     board::{Slot, State},
     game::Game,
+    generated::POSSIBLE_TO_WIN,
     moves::{Move, legal_moves},
 };
 
@@ -166,30 +167,63 @@ pub fn score(board: BitBoard, turn: Slot) -> i32 {
     score
 }
 
-// TODO: no conversion
-pub fn possible_to_win(board: BitBoard) -> bool {
-    use Slot::{Empty as E, O, X};
-    let board = crate::board::Board::new_with(board.to_arr());
+#[cfg(not(all(target_arch = "aarch64", target_feature = "neon")))]
+pub const fn possible_to_win(board: BitBoard) -> bool {
+    let mut idx = 0;
 
-    board
-        .rows()
-        .into_iter()
-        .chain(board.columns())
-        .chain(board.diags())
-        .any(|line| {
-            [
-                [E; 3],
-                [X, E, E],
-                [E, E, X],
-                [X, E, X],
-                [O, E, E],
-                [E, E, O],
-                [O, E, O],
-                [X, X, E],
-                [E, X, X],
-                [O, O, E],
-                [E, O, O],
-            ]
-            .contains(&line)
-        })
+    loop {
+        if idx == 88 {
+            break false;
+        }
+
+        let b = POSSIBLE_TO_WIN[idx];
+
+        if b == (b & board.0) {
+            break true;
+        }
+
+        idx += 1;
+    }
+}
+
+#[cfg(all(target_arch = "aarch64", target_feature = "neon"))]
+pub fn possible_to_win(board: BitBoard) -> bool {
+    use std::arch::aarch64::{
+        vandq_u32, vceqq_u32, vld1q_dup_u32, vld1q_u32_x4, vmaxvq_u32, vorrq_u32,
+    };
+
+    let mut idx = 0;
+    let brd = unsafe { vld1q_dup_u32(&board.0 as *const u32) };
+
+    loop {
+        if idx >= 88 {
+            break false;
+        }
+
+        let max = unsafe {
+            let masks = vld1q_u32_x4(POSSIBLE_TO_WIN.as_ptr().add(idx));
+
+            let and0 = vandq_u32(masks.0, brd);
+            let and1 = vandq_u32(masks.1, brd);
+            let and2 = vandq_u32(masks.2, brd);
+            let and3 = vandq_u32(masks.3, brd);
+
+            let eqs0 = vceqq_u32(and0, masks.0);
+            let eqs1 = vceqq_u32(and1, masks.1);
+            let eqs2 = vceqq_u32(and2, masks.2);
+            let eqs3 = vceqq_u32(and3, masks.3);
+
+            let comb01 = vorrq_u32(eqs0, eqs1);
+            let comb23 = vorrq_u32(eqs2, eqs3);
+            let comb = vorrq_u32(comb01, comb23);
+
+            vmaxvq_u32(comb)
+        };
+
+        if max > 0 {
+            return true;
+        }
+
+        idx += 16
+    }
 }
