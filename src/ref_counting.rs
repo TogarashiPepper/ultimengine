@@ -3,26 +3,12 @@
 //! have improved the engines ability or made it worse
 
 use crate::{
-    board::{Board, Slot, State},
+    bitboard::BitBoard,
+    board::{Slot, State},
     game::Game,
 };
 
-// TODO: consolidate functions into one
-fn one_away_x(line: [Slot; 3]) -> bool {
-    use Slot::{Empty, X};
-
-    matches!(line, [X, X, Empty] | [Empty, X, X] | [X, Empty, X])
-}
-
-fn one_away_o(line: [Slot; 3]) -> bool {
-    use Slot::{Empty, O};
-
-    matches!(line, [O, O, Empty] | [Empty, O, O] | [O, Empty, O])
-}
-
 pub fn ref_score_game(game: &Game) -> i32 {
-    // TODO: dont make moves that put the enemy in a spot where they could block a 1 away
-
     let mut scr = score(game.shrink(), Slot::O) * 100;
 
     if let Some(last_move) = game.last_move {
@@ -38,17 +24,8 @@ pub fn ref_score_game(game: &Game) -> i32 {
         scr += sc;
     }
 
-    for st in game.states {
+    for st in game.boards.map(BitBoard::state) {
         if st == State::Won {
-            // TODO: better amount,
-            // due to issue with following board:
-            //  X | X | O
-            // -----------
-            //    | X |
-            // -----------
-            //    |   |
-            //  computer would move in 4 because it made the score 21, which was higher
-            //  than the previous win score of +6 so it wouldnt win the board
             scr += 100;
         } else if st == State::Lost {
             scr -= 100;
@@ -63,54 +40,38 @@ pub fn ref_score_game(game: &Game) -> i32 {
 }
 
 // Takes a `Board` and returns a "score" for how good it is for `X`
-fn score(board: Board, turn: Slot) -> i32 {
+fn score(board: BitBoard, turn: Slot) -> i32 {
     let mut score = 0;
 
     // We like corners because they open up the ability to make diagonals,
     // something which top mid, bot mid and the two sides dont let us do
-    for corner in [board[0], board[2], board[6], board[8]] {
-        if corner == Slot::X {
-            score += 1;
-        }
+    score += board.corners(Slot::X);
+
+    if turn == Slot::X {
+        score += 5 * board.one_aways_x();
     }
 
-    for line in board
-        .rows()
-        .into_iter()
-        .chain(board.columns())
-        .chain(board.diags())
-    {
-        if one_away_x(line) && turn == Slot::X {
-            score += 5;
-        }
-
-        if one_away_o(line) || (one_away_x(line) && turn == Slot::O) {
-            score += -5;
-        }
+    if turn == Slot::O {
+        score -= 5 * board.one_aways_x();
     }
 
-    if won_for(board, Slot::X) {
+    score -= 5 * board.one_aways_o();
+
+    if board.won_by_x() {
         score = 10_000;
     }
 
-    if won_for(board, Slot::O) {
+    if board.won_by_o() {
         score = -10_000;
     }
 
     score
 }
 
-fn won_for(board: Board, side: Slot) -> bool {
-    board
-        .rows()
-        .into_iter()
-        .chain(board.columns())
-        .chain(board.diags())
-        .any(|line| line == [side; 3])
-}
-
-fn possible_to_win(board: Board) -> bool {
+// TODO: no conversion
+pub fn possible_to_win(board: BitBoard) -> bool {
     use Slot::{Empty as E, O, X};
+    let board = crate::board::Board::new_with(board.to_arr());
 
     board
         .rows()

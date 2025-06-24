@@ -30,7 +30,7 @@ impl Slot {
         match self {
             Slot::X => Slot::O,
             Slot::O => Slot::X,
-            _ => self
+            _ => self,
         }
     }
 }
@@ -51,7 +51,27 @@ pub enum State {
 }
 
 impl State {
-    pub fn flip(self) -> Self {
+    pub const fn to_u32(self) -> u32 {
+        match self {
+            State::Undecided => 0,
+            State::Won => 1,
+            State::Lost => 2,
+            State::Tied => 3,
+        }
+    }
+
+    pub const fn from_u32(bits: u32) -> State {
+        match bits {
+            0 => State::Undecided,
+            1 => State::Won,
+            2 => State::Lost,
+            3 => State::Tied,
+
+            _ => unreachable!(),
+        }
+    }
+
+    pub const fn flip(self) -> Self {
         match self {
             State::Won => Self::Lost,
             State::Lost => Self::Won,
@@ -98,6 +118,12 @@ impl Board {
         let b = self.0;
 
         [[b[0], b[4], b[8]], [b[2], b[4], b[6]]]
+    }
+}
+
+impl Default for Board {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

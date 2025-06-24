@@ -1,19 +1,13 @@
-mod benchmark;
-mod board;
-mod counting;
-mod game;
-mod moves;
-mod ref_counting;
-
 use cfg_if::cfg_if;
 
-use std::time::Instant;
+use std::{io::stdout, time::Instant};
 
-use crate::{
+use ultimengine::{
     board::{Slot, State},
     counting::alpha_beta,
     game::Game,
     moves::parse_move,
+    benchmark,
 };
 
 fn redraw(game: &Game) {
@@ -38,8 +32,6 @@ fn main() {
     #[cfg(feature = "savestates")]
     let config = bincode::config::standard();
     let stdin = std::io::stdin();
-
-    let instant = Instant::now();
 
     let mut game = if std::env::var("LOAD_GAME").is_ok() {
         cfg_if! {
@@ -80,6 +72,13 @@ fn main() {
 
         match mov_buf.trim() {
             "undo" => std::mem::swap(&mut game, &mut last_g),
+            "engscore" => {
+                print!("engines score of its last move: {}", last_eng_score);
+                stdout().flush();
+
+                stdin.read_line(&mut mov_buf).unwrap();
+                continue;
+            }
             #[cfg(feature = "savestates")]
             x @ ("save" | "undosave") => {
                 let mut file = std::fs::File::create("gamestate").unwrap();

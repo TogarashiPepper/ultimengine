@@ -4,7 +4,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use rand::{rngs::ThreadRng, seq::IndexedRandom, Rng};
+use rand::{rngs::ThreadRng, Rng};
 
 use crate::{
     board::{Slot, State},

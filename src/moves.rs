@@ -4,7 +4,7 @@ use std::fmt::Debug;
 use bincode::{Decode, Encode};
 
 use crate::{
-    board::{Slot, State},
+    board::State,
     game::Game,
 };
 
@@ -22,11 +22,12 @@ impl Debug for Move {
 }
 
 pub fn is_legal(game: &Game, mv: Move) -> Result<(), &'static str> {
-    if game.states[mv.game] != State::Undecided {
+    if game.boards[mv.game].state() != State::Undecided {
         return Err("That game has been finished");
     }
 
-    if game.boards[mv.game][mv.index] != Slot::Empty {
+    let idx = 1 << (18 + mv.index);
+    if game.boards[mv.game].0 & idx != idx {
         return Err("square is not empty");
     }
 
@@ -84,8 +85,8 @@ pub fn parse_move(input: &str, active: usize) -> Result<Move, &'static str> {
 pub fn legal_moves(game: &Game) -> Vec<Move> {
     let mut mvs = Vec::with_capacity(81);
 
-    for (bdx, board) in game.boards.iter().enumerate() {
-        for idx in 0..board.0.len() {
+    for bdx in 0..9 {
+        for idx in 0..9 {
             if is_legal(
                 game,
                 Move {
@@ -105,4 +106,3 @@ pub fn legal_moves(game: &Game) -> Vec<Move> {
 
     mvs
 }
-

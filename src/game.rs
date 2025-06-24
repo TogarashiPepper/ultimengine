@@ -2,19 +2,19 @@ use std::array;
 
 #[cfg(feature = "savestates")]
 use bincode::{Decode, Encode};
-use rand::{rng, seq::IndexedRandom, Rng, SeedableRng};
+use rand::{SeedableRng, seq::IndexedRandom};
 
 use crate::{
-    board::{Board, Slot, State},
-    counting::{possible_to_win, won_for},
-    moves::{is_legal, legal_moves, Move},
+    bitboard::BitBoard,
+    board::{Slot, State},
+    counting::possible_to_win,
+    moves::{Move, is_legal, legal_moves},
 };
 
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "savestates", derive(Encode, Decode))]
 pub struct Game {
-    pub boards: [Board; 9],
-    pub states: [State; 9],
+    pub boards: [BitBoard; 9],
     /// Indicates active board, 0-8 is the idx, 9 means any board is free
     pub active: usize,
     pub state: State,
@@ -50,8 +50,7 @@ const TEMPLATE: &[u8] = b"
 impl Game {
     pub fn new() -> Self {
         Game {
-            boards: [Board::new(); 9],
-            states: [State::Undecided; 9],
+            boards: [BitBoard::new(); 9],
             active: 9,
             state: State::Undecided,
             last_move: None,
@@ -84,14 +83,14 @@ impl Game {
         let mut g = Self::new();
 
         // Tie board
-        g.boards[0] = Board::new_with([X, O, X, X, O, O, O, X, X]);
-        g.states[0] = State::Tied;
+        g.boards[0] = BitBoard::new_with([X, O, X, X, O, O, O, X, X]);
+        g.boards[0].set_state(State::Tied);
         // Win Board
-        g.boards[1] = Board::new_with([X, X, X, E, E, E, E, E, E]);
-        g.states[1] = State::Won;
+        g.boards[1] = BitBoard::new_with([X, X, X, E, E, E, E, E, E]);
+        g.boards[1].set_state(State::Won);
         // Loss Board
-        g.boards[2] = Board::new_with([O, O, O, E, E, E, E, E, E]);
-        g.states[2] = State::Lost;
+        g.boards[2] = BitBoard::new_with([O, O, O, E, E, E, E, E, E]);
+        g.boards[2].set_state(State::Lost);
 
         g
     }
@@ -100,13 +99,7 @@ impl Game {
         let mut new = self.clone();
 
         for board in &mut new.boards {
-            for sq in board.0.iter_mut() {
-                *sq = sq.flip();
-            }
-        }
-
-        for state in &mut new.states {
-            *state = state.flip();
+            board.flip();
         }
 
         new.state = new.state.flip();
@@ -114,15 +107,15 @@ impl Game {
         new
     }
 
-    pub fn shrink(&self) -> Board {
-        let arr = array::from_fn(|idx| match self.states[idx] {
+    pub fn shrink(&self) -> BitBoard {
+        let arr = array::from_fn(|idx| match self.boards[idx].state() {
             State::Won => Slot::X,
             State::Lost => Slot::O,
             State::Tied => Slot::Disabled,
             State::Undecided => Slot::Empty,
         });
 
-        Board::new_with(arr)
+        BitBoard::new_with(arr)
     }
 
     pub fn sim_move(&self, mv: Move, side: Slot) -> Result<Game, &'static str> {
@@ -142,25 +135,36 @@ impl Game {
 
         let brd = &mut self.boards[mv.game];
 
-        brd[mv.index] = side;
-        if won_for(*brd, Slot::X) {
-            self.states[mv.game] = State::Won;
-        } else if won_for(*brd, Slot::O) {
-            self.states[mv.game] = State::Lost;
+        brd.0 |= 1
+            << (mv.index
+                + match side {
+                    Slot::X => 0,
+                    Slot::O => 9,
+                    Slot::Empty => 18,
+                    Slot::Disabled => unreachable!(),
+                });
+
+        let idx = 1 << (18 + mv.index);
+        brd.0 &= !idx;
+
+        if brd.won_by_x() {
+            self.boards[mv.game].set_state(State::Won);
+        } else if brd.won_by_o() {
+            self.boards[mv.game].set_state(State::Lost);
         } else if !possible_to_win(*brd) {
-            self.states[mv.game] = State::Tied;
+            self.boards[mv.game].set_state(State::Tied);
         }
 
         let shrunken = self.shrink();
-        if won_for(shrunken, Slot::X) {
+        if shrunken.won_by_x() {
             self.state = State::Won;
-        } else if won_for(shrunken, Slot::O) {
+        } else if shrunken.won_by_o() {
             self.state = State::Lost;
         } else if !possible_to_win(shrunken) {
             self.state = State::Tied;
         }
 
-        if self.states[mv.index] != State::Undecided {
+        if self.boards[mv.index].state() != State::Undecided {
             self.active = 9;
         } else {
             self.active = mv.index;
@@ -191,7 +195,7 @@ impl Game {
                     b'n'..=b'v' => {
                         let idx = (*byte - b'n') as usize;
 
-                        *byte = self.state_to_col(self.states[idx], idx);
+                        *byte = self.state_to_col(self.boards[idx].state(), idx);
                     }
                     b'm' => continue,
                     b'A'..=b'Z' => {
@@ -206,12 +210,12 @@ impl Game {
                         {
                             *byte = b'4';
                         } else {
-                            *byte = self.state_to_col(self.states[gm], gm);
+                            *byte = self.state_to_col(self.boards[gm].state(), gm);
                         }
                     }
                     _ => {
                         let idx = (*byte - b'a') as usize;
-                        *byte = self.boards[idx][idxs[idx]].to_chr() as u8;
+                        *byte = self.boards[idx].to_arr()[idxs[idx]].to_chr() as u8;
 
                         idxs[idx] += 1;
                     }
@@ -220,5 +224,11 @@ impl Game {
         }
 
         String::from_utf8(res).unwrap()
+    }
+}
+
+impl Default for Game {
+    fn default() -> Self {
+        Self::new()
     }
 }
