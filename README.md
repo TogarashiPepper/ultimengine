@@ -15,3 +15,4 @@ Then execute the resulting binary and play to your heart's content:
 ```bash
 ./target/release/ultimengine
 ```
+Moves take the form `{game}{idx}` (i.e `a2`). The games are lettered `a..=i` and the idx is `1..=9`, you may omit the game if a specific game is active. (i.e `1`)
