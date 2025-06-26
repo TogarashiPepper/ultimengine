@@ -1,6 +1,6 @@
 use cfg_if::cfg_if;
 
-use std::{io::stdout, time::Instant};
+use std::io::stdout;
 
 use ultimengine::{
     board::{Slot, State},

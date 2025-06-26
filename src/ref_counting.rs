@@ -5,7 +5,7 @@
 use crate::{
     bitboard::BitBoard,
     board::{Slot, State},
-    game::Game,
+    game::Game, generated::POSSIBLE_TO_WIN,
 };
 
 pub fn ref_score_game(game: &Game) -> i32 {
@@ -68,30 +68,20 @@ fn score(board: BitBoard, turn: Slot) -> i32 {
     score
 }
 
-// TODO: no conversion
-pub fn possible_to_win(board: BitBoard) -> bool {
-    use Slot::{Empty as E, O, X};
-    let board = crate::board::Board::new_with(board.to_arr());
+pub const fn possible_to_win(board: BitBoard) -> bool {
+    let mut idx = 0;
 
-    board
-        .rows()
-        .into_iter()
-        .chain(board.columns())
-        .chain(board.diags())
-        .any(|line| {
-            [
-                [E; 3],
-                [X, E, E],
-                [E, E, X],
-                [X, E, X],
-                [O, E, E],
-                [E, E, O],
-                [O, E, O],
-                [X, X, E],
-                [E, X, X],
-                [O, O, E],
-                [E, O, O],
-            ]
-            .contains(&line)
-        })
+    loop {
+        if idx == 88 {
+            break false;
+        }
+
+        let b = POSSIBLE_TO_WIN[idx];
+
+        if b == (b & board.0) {
+            break true;
+        }
+
+        idx += 1;
+    }
 }

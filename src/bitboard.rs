@@ -179,7 +179,6 @@ impl BitBoard {
             };
 
             n += r as i32;
-            // n += (b == (b & self.0)) as i32;
 
             idx += 12;
         }
