@@ -11,10 +11,7 @@ use ultimengine::{
 
 pub fn bench_alphabeta(c: &mut Criterion) {
     let mut group = c.benchmark_group("alpha_beta pruning bench");
-    group
-        .sampling_mode(SamplingMode::Flat)
-        .sample_size(50)
-        .measurement_time(Duration::from_secs(150));
+    group.sampling_mode(SamplingMode::Flat);
 
     group.bench_function("one game", |b| {
         b.iter_batched(
@@ -52,7 +49,7 @@ pub fn bench_alphabeta(c: &mut Criterion) {
 }
 
 pub fn bench_scoring(c: &mut Criterion) {
-    c.bench_function("10x score_game", |b| {
+    c.bench_function("1000x score_game", |b| {
         b.iter_batched(
             || Game::random(40),
             |game| {

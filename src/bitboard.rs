@@ -104,19 +104,12 @@ impl BitBoard {
             _ => unreachable!(),
         }
     }
-    
+
     #[cfg(not(all(target_arch = "aarch64", target_feature = "neon")))]
     const fn one_aways<const FOR_X: bool>(self) -> i32 {
         let mut n = 0;
         let mut idx = 0;
-        let arr = const {
-            if FOR_X {
-                ONE_AWAY_X
-            }
-            else {
-                ONE_AWAY_O
-            }
-        };
+        let arr = const { if FOR_X { ONE_AWAY_X } else { ONE_AWAY_O } };
 
         loop {
             if idx >= 24 {
@@ -136,16 +129,13 @@ impl BitBoard {
     #[cfg(all(target_arch = "aarch64", target_feature = "neon"))]
     fn one_aways<const FOR_X: bool>(self) -> i32 {
         use std::arch::aarch64::{
-            vaddvq_u32, vandq_u32, vceqq_u32, vld1q_dup_u32, vld1q_u32_x3, vmvnq_u32, vshrq_n_u32
+            vaddvq_u32, vandq_u32, vceqq_u32, vld1q_dup_u32, vld1q_u32_x3, vmvnq_u32, vshrq_n_u32,
         };
 
         let mut n = 0;
         let mut idx = 0;
         let arr = const { if FOR_X { ONE_AWAY_X } else { ONE_AWAY_O } };
         let brd = unsafe { vld1q_dup_u32(&self.0 as *const u32) };
-
-        let zero: u32 = 0;
-        let zeros = unsafe { vld1q_dup_u32(&zero as *const u32) };
 
         loop {
             if idx >= 24 {
@@ -162,10 +152,6 @@ impl BitBoard {
                 let eq0 = vceqq_u32(and0, masks.0);
                 let eq1 = vceqq_u32(and1, masks.1);
                 let eq2 = vceqq_u32(and2, masks.2);
-
-                let eq0 = vceqq_u32(vmvnq_u32(eq0), zeros);
-                let eq1 = vceqq_u32(vmvnq_u32(eq1), zeros);
-                let eq2 = vceqq_u32(vmvnq_u32(eq2), zeros);
 
                 let shf0 = vshrq_n_u32::<31>(eq0);
                 let shf1 = vshrq_n_u32::<31>(eq1);
