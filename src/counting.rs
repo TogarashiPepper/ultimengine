@@ -28,12 +28,13 @@ fn _alpha_beta<const IS_MAX: bool>(
     mut alp: i32,
     mut bet: i32,
 ) -> i32 {
-    if depth == MAX_DEPTH || game.state != State::Undecided {
+    if depth >= MAX_DEPTH || game.state != State::Undecided {
         return score_game(game, if IS_MAX { Slot::O } else { Slot::X });
     }
 
     let mut lgs = legal_moves(game);
     let len = lgs.len();
+
     if IS_MAX {
         let mut value = i32::MIN;
 
@@ -54,10 +55,7 @@ fn _alpha_beta<const IS_MAX: bool>(
             let eval = _alpha_beta::<false>(
                 &sim,
                 choice,
-                min(
-                    depth + (len >= 2) as u8 + 2 * (sim.active == 9) as u8,
-                    MAX_DEPTH,
-                ),
+                depth + 1 + (sim.active == 9) as u8,
                 alp,
                 bet,
             );
@@ -91,10 +89,7 @@ fn _alpha_beta<const IS_MAX: bool>(
             let eval = _alpha_beta::<true>(
                 &sim,
                 choice,
-                min(
-                    depth + (len >= 2) as u8 + (sim.active == 9) as u8,
-                    MAX_DEPTH,
-                ),
+                depth + 1 + 2 * (sim.active == 9) as u8,
                 alp,
                 bet,
             );
