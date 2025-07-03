@@ -83,10 +83,12 @@ impl BitBoard {
         self.set_state(self.state().flip());
     }
 
+    #[inline]
     pub const fn state(self) -> State {
         State::from_u32(self.0 >> 27)
     }
 
+    #[inline]
     pub const fn set_state(&mut self, st: State) {
         const MASK: u32 = 0b11111 << 27;
         self.0 &= !MASK;
@@ -94,6 +96,7 @@ impl BitBoard {
         self.0 |= st.to_u32() << 27;
     }
 
+    #[inline]
     pub const fn corners(self, side: Slot) -> i32 {
         const CORNER_MASK: u32 = 0b101000101;
 
@@ -135,7 +138,7 @@ impl BitBoard {
         let mut n = 0;
         let mut idx = 0;
         let arr = const { if FOR_X { ONE_AWAY_X } else { ONE_AWAY_O } };
-        let brd = unsafe { vld1q_dup_u32(&self.0 as *const u32) };
+        let brd = unsafe { vld1q_dup_u32(&raw const self.0) };
 
         loop {
             if idx >= 24 {

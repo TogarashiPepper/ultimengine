@@ -5,7 +5,8 @@
 use crate::{
     bitboard::BitBoard,
     board::{Slot, State},
-    game::Game, generated::POSSIBLE_TO_WIN,
+    game::Game,
+    generated::POSSIBLE_TO_WIN,
 };
 
 pub fn ref_score_game(game: &Game) -> i32 {

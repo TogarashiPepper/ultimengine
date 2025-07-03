@@ -3,10 +3,7 @@ use std::fmt::Debug;
 #[cfg(feature = "savestates")]
 use bincode::{Decode, Encode};
 
-use crate::{
-    board::State,
-    game::Game,
-};
+use crate::{board::State, game::Game};
 
 #[derive(PartialEq, Clone, Copy)]
 #[cfg_attr(feature = "savestates", derive(Encode, Decode))]

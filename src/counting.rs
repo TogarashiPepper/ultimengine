@@ -52,13 +52,8 @@ fn _alpha_beta<const IS_MAX: bool>(
 
         for legal in lgs {
             let sim = game.sim_move(legal, Slot::X).unwrap();
-            let eval = _alpha_beta::<false>(
-                &sim,
-                choice,
-                depth + 1 + (sim.active == 9) as u8,
-                alp,
-                bet,
-            );
+            let eval =
+                _alpha_beta::<false>(&sim, choice, depth + 1 + (sim.active == 9) as u8, alp, bet);
 
             if eval > value && depth == 0 {
                 *choice = legal;
@@ -182,13 +177,14 @@ pub const fn possible_to_win(board: BitBoard) -> bool {
 }
 
 #[cfg(all(target_arch = "aarch64", target_feature = "neon"))]
+#[inline]
 pub fn possible_to_win(board: BitBoard) -> bool {
     use std::arch::aarch64::{
         vandq_u32, vceqq_u32, vld1q_dup_u32, vld1q_u32_x4, vmaxvq_u32, vorrq_u32,
     };
 
     let mut idx = 0;
-    let brd = unsafe { vld1q_dup_u32(&board.0 as *const u32) };
+    let brd = unsafe { vld1q_dup_u32(&raw const board.0) };
 
     loop {
         if idx >= 88 {

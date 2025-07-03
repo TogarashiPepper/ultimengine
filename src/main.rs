@@ -3,11 +3,11 @@ use cfg_if::cfg_if;
 use std::io::stdout;
 
 use ultimengine::{
+    benchmark,
     board::{Slot, State},
     counting::alpha_beta,
     game::Game,
     moves::parse_move,
-    benchmark,
 };
 
 fn redraw(game: &Game) {
