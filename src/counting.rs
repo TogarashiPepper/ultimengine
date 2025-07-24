@@ -33,7 +33,6 @@ fn _alpha_beta<const IS_MAX: bool>(
     }
 
     let mut lgs = legal_moves(game);
-    let len = lgs.len();
 
     if IS_MAX {
         let mut value = i32::MIN;

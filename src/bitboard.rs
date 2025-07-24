@@ -119,9 +119,9 @@ impl BitBoard {
                 break;
             }
 
-            let masks = arr[idx];
+            let mask = arr[idx];
 
-            n += (b == (b & self.0)) as i32;
+            n += (mask == (mask & self.0)) as i32;
 
             idx += 8;
         }
@@ -132,7 +132,7 @@ impl BitBoard {
     #[cfg(all(target_arch = "aarch64", target_feature = "neon"))]
     fn one_aways<const FOR_X: bool>(self) -> i32 {
         use std::arch::aarch64::{
-            vaddvq_u32, vandq_u32, vceqq_u32, vld1q_dup_u32, vld1q_u32_x3, vmvnq_u32, vshrq_n_u32,
+            vaddvq_u32, vandq_u32, vceqq_u32, vld1q_dup_u32, vld1q_u32_x3, vshrq_n_u32,
         };
 
         let mut n = 0;
