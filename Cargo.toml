@@ -9,10 +9,10 @@ cfg-if = "1.0.1"
 rand = "0.9.1"
 
 [dev-dependencies]
-criterion = "0.3"
+divan = "0.1.21"
 
 [[bench]]
-name = "one_game"
+name = "engine"
 harness = false
 
 [features]

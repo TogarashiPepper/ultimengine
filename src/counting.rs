@@ -41,7 +41,7 @@ fn _alpha_beta<const IS_MAX: bool>(
         // but alpha-beta pruning benefits so much from
         // a sorted list that it's worth it (see sortdepthanalysis.txt)
         if depth <= 4 {
-            lgs.sort_by(|a, b| {
+            lgs.sort_unstable_by(|a, b| {
                 let asim = game.sim_move(*a, Slot::X).unwrap();
                 let bsim = game.sim_move(*b, Slot::X).unwrap();
 
@@ -70,7 +70,7 @@ fn _alpha_beta<const IS_MAX: bool>(
         let mut value = i32::MAX;
 
         if depth <= 4 {
-            lgs.sort_by(|a, b| {
+            lgs.sort_unstable_by(|a, b| {
                 let asim = game.sim_move(*a, Slot::X).unwrap();
                 let bsim = game.sim_move(*b, Slot::X).unwrap();
 
