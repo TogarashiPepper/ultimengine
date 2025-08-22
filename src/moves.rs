@@ -18,6 +18,7 @@ impl Debug for Move {
     }
 }
 
+#[inline]
 pub fn is_legal(game: &Game, mv: Move) -> Result<(), &'static str> {
     if game.boards[mv.game].state() != State::Undecided {
         return Err("That game has been finished");
