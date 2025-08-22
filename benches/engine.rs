@@ -1,4 +1,5 @@
 use divan::Bencher;
+use mimalloc::MiMalloc;
 use rand::{SeedableRng, rngs::SmallRng, seq::IndexedRandom};
 use ultimengine::{
     board::{Slot, State},
@@ -6,6 +7,9 @@ use ultimengine::{
     game::Game,
     moves::legal_moves,
 };
+
+#[global_allocator]
+static GLOBAL: MiMalloc = MiMalloc;
 
 fn main() {
     divan::main();
