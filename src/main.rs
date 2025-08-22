@@ -1,4 +1,5 @@
 use cfg_if::cfg_if;
+use mimalloc::MiMalloc;
 
 use std::io::stdout;
 
@@ -9,6 +10,9 @@ use ultimengine::{
     game::Game,
     moves::parse_move,
 };
+
+#[global_allocator]
+static GLOBAL: MiMalloc = MiMalloc;
 
 fn redraw(game: &Game) {
     print!("\x1B[2J\x1B[1;1H");
