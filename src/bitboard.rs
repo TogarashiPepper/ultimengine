@@ -10,6 +10,22 @@ use crate::{
 /// First 9 bits are X, then O, then Empty, then 5 bits for state
 pub struct BitBoard(pub u32);
 
+pub mod consts {
+    pub const MASK: u32 = 2u32.pow(9) - 1;
+
+    pub const X_OFFS: u32 = 0;
+    pub const X_MASK: u32 = MASK;
+
+    pub const O_OFFS: u32 = 9;
+    pub const O_MASK: u32 = MASK << O_OFFS;
+
+    pub const E_OFFS: u32 = 18;
+    pub const E_MASK: u32 = MASK << E_OFFS;
+
+    pub const ST_OFFS: u32 = 27;
+    pub const ST_MASK: u32 = MASK << ST_OFFS;
+}
+
 impl BitBoard {
     pub const fn new() -> Self {
         const { Self::new_with([Slot::Empty; 9]) }

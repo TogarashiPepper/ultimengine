@@ -11,7 +11,7 @@ use crate::{
     moves::{Move, is_legal, legal_moves},
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "savestates", derive(Encode, Decode))]
 pub struct Game {
     pub boards: [BitBoard; 9],
@@ -60,6 +60,26 @@ impl Game {
     pub fn random(times: u8) -> Game {
         let mut g = Game::new();
         let mut rng = rand::rngs::SmallRng::seed_from_u64(42);
+        let mut side = Slot::X;
+
+        for _ in 0..times {
+            let lgms = legal_moves(&g);
+
+            if lgms.is_empty() {
+                break;
+            }
+
+            g.make_move(*lgms.choose(&mut rng).unwrap(), side).unwrap();
+
+            side = side.flip();
+        }
+
+        g
+    }
+
+    pub fn random_seedless(times: u8) -> Game {
+        let mut g = Game::new();
+        let mut rng = rand::rng();
         let mut side = Slot::X;
 
         for _ in 0..times {
