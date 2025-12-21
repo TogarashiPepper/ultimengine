@@ -1,14 +1,11 @@
-use std::collections::HashMap;
-
 use divan::Bencher;
 use mimalloc::MiMalloc;
-use rand::{SeedableRng, random, rngs::SmallRng, seq::IndexedRandom};
+use rand::{SeedableRng, rngs::SmallRng, seq::IndexedRandom};
 use ultimengine::{
     board::{Slot, State},
     counting::{alpha_beta, score_game},
     game::Game,
     moves::legal_moves,
-    table::Table,
 };
 
 #[global_allocator]
@@ -142,7 +139,6 @@ mod table {
 }
 
 #[divan::bench]
-#[ignore = "reason"]
 fn one_game(bencher: Bencher) {
     bencher
         .with_inputs(|| (Game::new(), SmallRng::seed_from_u64(42)))
@@ -169,7 +165,6 @@ fn one_game(bencher: Bencher) {
 }
 
 #[divan::bench(name = "1000x score_game")]
-#[ignore = "reason"]
 fn thousand_scores(bencher: Bencher) {
     bencher
         .with_inputs(|| Game::random(40))
@@ -182,7 +177,6 @@ fn thousand_scores(bencher: Bencher) {
 }
 
 #[divan::bench]
-#[ignore = "reason"]
 fn one_move(bencher: Bencher) {
     bencher
         .with_inputs(|| Game::random(20))
