@@ -165,13 +165,13 @@ impl Game {
         is_legal(self, mv)?;
 
         if self.active == 9 {
-            self.active = mv.game;
+            self.active = mv.game();
         }
 
-        let brd = &mut self.boards[mv.game as usize];
+        let brd = &mut self.boards[mv.game() as usize];
 
         brd.0 |= 1
-            << (mv.index
+            << (mv.index()
                 + match side {
                     Slot::X => 0,
                     Slot::O => 9,
@@ -179,15 +179,15 @@ impl Game {
                     Slot::Disabled => unreachable!(),
                 });
 
-        let idx = 1 << (18 + mv.index);
+        let idx = 1 << (18 + mv.index());
         brd.0 &= !idx;
 
         if brd.won_by_x() {
-            self.boards[mv.game as usize].set_state(State::Won);
+            self.boards[mv.game() as usize].set_state(State::Won);
         } else if brd.won_by_o() {
-            self.boards[mv.game as usize].set_state(State::Lost);
+            self.boards[mv.game() as usize].set_state(State::Lost);
         } else if !possible_to_win(*brd) {
-            self.boards[mv.game as usize].set_state(State::Tied);
+            self.boards[mv.game() as usize].set_state(State::Tied);
         }
 
         let shrunken = self.shrink();
@@ -199,10 +199,10 @@ impl Game {
             self.set_state(State::Tied);
         }
 
-        if self.boards[mv.index as usize].state() != State::Undecided {
+        if self.boards[mv.index() as usize].state() != State::Undecided {
             self.active = 9;
         } else {
-            self.active = mv.index;
+            self.active = mv.index();
         }
 
         self.last_move = Some(mv);
@@ -238,12 +238,7 @@ impl Game {
                         let gm = *byte - b'A';
                         let idx = idxs[gm as usize];
 
-                        if self.last_move
-                            == Some(Move {
-                                game: gm,
-                                index: idx,
-                            })
-                        {
+                        if self.last_move == Some(Move::new(gm, idx)) {
                             *byte = b'4';
                         } else {
                             *byte =

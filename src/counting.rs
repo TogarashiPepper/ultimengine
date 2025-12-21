@@ -11,10 +11,8 @@ use crate::{
 pub const MAX_DEPTH: u8 = 9;
 
 pub fn alpha_beta(game: &Game) -> (i32, Move) {
-    let mut mv = Move {
-        game: 99,
-        index: 99,
-    };
+    // 15 is the highest that fits in the u4 of storage for each field
+    let mut mv = Move::new(15, 15);
 
     let scr = _alpha_beta::<true>(game, &mut mv, 0, i32::MIN, i32::MAX);
 

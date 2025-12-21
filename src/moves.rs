@@ -7,30 +7,59 @@ use crate::{board::State, game::Game};
 
 #[derive(PartialEq, Clone, Copy, Hash, Eq)]
 #[cfg_attr(feature = "savestates", derive(Encode, Decode))]
-// TODO: see if we can use even less bits here
-pub struct Move {
-    pub game: u8,
-    pub index: u8,
+/// Upper 4 bits is .game, lower 4 bits is .index
+/// 0000  0000
+/// game  idx
+pub struct Move(u8);
+
+impl Move {
+    pub fn new(game: u8, index: u8) -> Self {
+        let idx_b = index & 0b00001111;
+        let gam_b = (game & 0b00001111) << 4;
+        Move(idx_b | gam_b)
+    }
+
+    pub fn game(&self) -> u8 {
+        self.0 >> 4
+    }
+
+    pub fn set_game(&mut self, idx: u8) {
+        debug_assert!(idx <= 9);
+
+        self.0 &= 0b00001111;
+        self.0 |= (idx & 0b00001111) << 4;
+    }
+
+    pub fn index(&self) -> u8 {
+        self.0 & 0b00001111
+    }
+
+    pub fn set_idx(&mut self, idx: u8) {
+        debug_assert!(idx <= 9);
+
+        self.0 &= 0b11110000;
+        self.0 |= idx & 0b00001111;
+    }
 }
 
 impl Debug for Move {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}{}", (self.game + b'A') as char, self.index + 1)
+        write!(f, "{}{}", (self.game() + b'A') as char, self.index() + 1)
     }
 }
 
 #[inline]
 pub fn is_legal(game: &Game, mv: Move) -> Result<(), &'static str> {
-    if game.boards[mv.game as usize].state() != State::Undecided {
+    if game.boards[mv.game() as usize].state() != State::Undecided {
         return Err("That game has been finished");
     }
 
-    let idx = 1 << (18 + mv.index);
-    if game.boards[mv.game as usize].0 & idx != idx {
+    let idx = 1 << (18 + mv.index());
+    if game.boards[mv.game() as usize].0 & idx != idx {
         return Err("square is not empty");
     }
 
-    if game.active != mv.game && game.active != 9 {
+    if game.active != mv.game() && game.active != 9 {
         return Err("must play in the active board");
     }
 
@@ -48,18 +77,12 @@ pub fn parse_move(input: &str, active: u8) -> Result<Move, &'static str> {
     }
 
     if input.len() == 1 && active != 9 {
-        return Ok(Move {
-            game: active,
-            index: input.as_bytes()[0] - b'0' - 1,
-        });
+        return Ok(Move::new(active, input.as_bytes()[0] - b'0' - 1));
     }
 
     // Purposefully Invalid sentinel
     // game, idx
-    let mut mov = Move {
-        game: active,
-        index: 9,
-    };
+    let mut mov = Move::new(active, 9);
 
     let bs = input.as_bytes();
 
@@ -69,14 +92,14 @@ pub fn parse_move(input: &str, active: u8) -> Result<Move, &'static str> {
         };
 
         let v = bs[0] - b'a';
-        mov.game = v;
+        mov.set_game(v);
     }
 
     if !char::from(bs[bs.len() - 1]).is_ascii_digit() {
         return Err("index must be between 1 and 9");
     };
 
-    mov.index = bs[bs.len() - 1] - b'0' - 1;
+    mov.set_idx(bs[bs.len() - 1] - b'0' - 1);
 
     Ok(mov)
 }
@@ -86,19 +109,10 @@ pub fn legal_moves(game: &Game) -> Vec<Move> {
 
     for bdx in 0..9 {
         for idx in 0..9 {
-            if is_legal(
-                game,
-                Move {
-                    game: bdx,
-                    index: idx,
-                },
-            )
-            .is_ok()
-            {
-                mvs.push(Move {
-                    game: bdx,
-                    index: idx,
-                })
+            let m = Move::new(bdx, idx);
+
+            if is_legal(game, m).is_ok() {
+                mvs.push(m);
             }
         }
     }

@@ -13,14 +13,14 @@ pub fn ref_score_game(game: &Game) -> i32 {
     let mut scr = score(game.shrink(), Slot::O) * 100;
 
     if let Some(last_move) = game.last_move {
-        scr += score(game.boards[last_move.game as usize], Slot::X);
+        scr += score(game.boards[last_move.game() as usize], Slot::X);
 
-        if last_move.index == game.active {
+        if last_move.index() == game.active {
             scr += score(game.boards[game.active as usize], Slot::O);
         }
     }
 
-    if game.active != 9 && game.last_move.map(|m| m.game) != Some(game.active) {
+    if game.active != 9 && game.last_move.map(|m| m.game()) != Some(game.active) {
         let sc = score(game.boards[game.active as usize], Slot::O);
         scr += sc;
     }
