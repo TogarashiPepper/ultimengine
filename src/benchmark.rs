@@ -18,7 +18,7 @@ fn play_game(rng: &mut ThreadRng) -> State {
     let mut game = Game::new();
 
     loop {
-        if game.state != State::Undecided {
+        if game.state() != State::Undecided {
             break;
         }
 
@@ -26,7 +26,7 @@ fn play_game(rng: &mut ThreadRng) -> State {
 
         game.make_move(mv, Slot::X).unwrap();
 
-        if game.state != State::Undecided {
+        if game.state() != State::Undecided {
             break;
         }
 
@@ -47,7 +47,7 @@ fn play_game(rng: &mut ThreadRng) -> State {
         game.make_move(legals.0, Slot::O).unwrap();
     }
 
-    game.state
+    game.state()
 }
 
 pub fn benchmark() {

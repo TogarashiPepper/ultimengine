@@ -144,7 +144,7 @@ fn one_game(bencher: Bencher) {
         .with_inputs(|| (Game::new(), SmallRng::seed_from_u64(42)))
         .bench_values(|(mut game, mut rng)| {
             loop {
-                if game.state != State::Undecided {
+                if game.state() != State::Undecided {
                     break;
                 }
 
@@ -152,7 +152,7 @@ fn one_game(bencher: Bencher) {
 
                 game.make_move(mv.1, Slot::X).unwrap();
 
-                if game.state != State::Undecided {
+                if game.state() != State::Undecided {
                     break;
                 }
 

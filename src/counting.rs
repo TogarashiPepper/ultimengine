@@ -28,7 +28,7 @@ fn _alpha_beta<const IS_MAX: bool>(
     mut alp: i32,
     mut bet: i32,
 ) -> i32 {
-    if depth >= MAX_DEPTH || game.state != State::Undecided {
+    if depth >= MAX_DEPTH || game.state() != State::Undecided {
         return score_game(game, if IS_MAX { Slot::O } else { Slot::X });
     }
 

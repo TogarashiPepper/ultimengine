@@ -1,4 +1,5 @@
 use crate::{
+    bitboard::consts::{ST_MASK, ST_OFFS},
     board::{Slot, State},
     generated::{ONE_AWAY_O, ONE_AWAY_X, WON_BY_O, WON_BY_X},
 };
@@ -7,8 +8,9 @@ use crate::{
 #[derive(Debug, Clone, Copy, PartialEq, Hash, Eq)]
 #[cfg_attr(feature = "savestates", derive(Encode, Decode))]
 /// u32 holding 3 x 9 variants + 5 bits for state
-/// First 9 bits are X, then O, then Empty, then 5 bits for state
-/// TODO: make this 2 bits for state and then 3 unused that `Game` can take advantage of
+/// First 9 bits are X, then O, then Empty, then 2 bits for state, 3 unused:
+/// 00111   111111111   111111111   111111111
+///	state   empty bit   o brd bit   x brd bit
 pub struct BitBoard(pub u32);
 
 pub mod consts {
@@ -24,7 +26,10 @@ pub mod consts {
     pub const E_MASK: u32 = MASK << E_OFFS;
 
     pub const ST_OFFS: u32 = 27;
-    pub const ST_MASK: u32 = MASK << ST_OFFS;
+    pub const ST_MASK: u32 = 0b00011 << ST_OFFS;
+
+    pub const UN_OFFS: u32 = 29;
+    pub const UN_MASK: u32 = MASK << UN_OFFS;
 }
 
 impl BitBoard {
@@ -102,12 +107,12 @@ impl BitBoard {
 
     #[inline]
     pub const fn state(self) -> State {
-        State::from_u32(self.0 >> 27)
+        State::from_u32((self.0 & ST_MASK) >> ST_OFFS)
     }
 
     #[inline]
     pub const fn set_state(&mut self, st: State) {
-        const MASK: u32 = 0b11111 << 27;
+        const MASK: u32 = 0b00011 << 27;
         self.0 &= !MASK;
 
         self.0 |= st.to_u32() << 27;

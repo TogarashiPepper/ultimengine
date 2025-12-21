@@ -18,7 +18,7 @@ fn redraw(game: &Game) {
     print!("\x1B[2J\x1B[1;1H");
     println!("{}", game.print());
 
-    match game.state {
+    match game.state() {
         State::Won => println!("YOU HAVE LOST!!!!!"),
         State::Lost => println!("YOU HAVE WON!!!!!"),
         State::Tied => println!("tie game :("),

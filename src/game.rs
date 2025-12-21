@@ -5,7 +5,10 @@ use bincode::{Decode, Encode};
 use rand::{SeedableRng, seq::IndexedRandom};
 
 use crate::{
-    bitboard::BitBoard,
+    bitboard::{
+        BitBoard,
+        consts::{UN_MASK, UN_OFFS},
+    },
     board::{Slot, State},
     counting::possible_to_win,
     moves::{Move, is_legal, legal_moves},
@@ -14,10 +17,11 @@ use crate::{
 #[derive(Debug, Clone, PartialEq, Hash, Eq)]
 #[cfg_attr(feature = "savestates", derive(Encode, Decode))]
 pub struct Game {
+    // Game state is stored in upper 3 bits of `boards[0]`
     pub boards: [BitBoard; 9],
     /// Indicates active board, 0-8 is the idx, 9 means any board is free
+	/// TODO: store this in unused board bits
     pub active: u8,
-    pub state: State,
     pub last_move: Option<Move>,
 }
 
@@ -48,13 +52,25 @@ const TEMPLATE: &[u8] = b"
 ";
 
 impl Game {
-    pub fn new() -> Self {
-        Game {
+    pub const fn new() -> Self {
+        let mut g = Game {
             boards: [BitBoard::new(); 9],
             active: 9,
-            state: State::Undecided,
             last_move: None,
-        }
+        };
+
+        g.set_state(State::Undecided);
+
+        g
+    }
+
+    pub const fn state(&self) -> State {
+        State::from_u32(self.boards[0].0 >> UN_OFFS)
+    }
+
+    pub const fn set_state(&mut self, st: State) {
+        self.boards[0].0 &= !UN_MASK;
+        self.boards[0].0 |= st.to_u32() << UN_OFFS;
     }
 
     pub fn random(times: u8) -> Game {
@@ -122,7 +138,7 @@ impl Game {
             board.flip();
         }
 
-        new.state = new.state.flip();
+        new.set_state(new.state().flip());
 
         new
     }
@@ -177,11 +193,11 @@ impl Game {
 
         let shrunken = self.shrink();
         if shrunken.won_by_x() {
-            self.state = State::Won;
+            self.set_state(State::Won);
         } else if shrunken.won_by_o() {
-            self.state = State::Lost;
+            self.set_state(State::Lost);
         } else if !possible_to_win(shrunken) {
-            self.state = State::Tied;
+            self.set_state(State::Tied);
         }
 
         if self.boards[mv.index as usize].state() != State::Undecided {
@@ -252,5 +268,20 @@ impl Game {
 impl Default for Game {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::{board::State, game::Game};
+
+    #[test]
+    fn modify_state() {
+        let mut game = Game::new();
+        assert_eq!(game.state(), State::Undecided);
+
+        game.set_state(State::Won);
+        assert_eq!(game.state(), State::Won);
+        assert_eq!(game.boards[0].state(), State::Undecided);
     }
 }
