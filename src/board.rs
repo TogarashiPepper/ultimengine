@@ -3,7 +3,7 @@ use std::fmt::Display;
 #[cfg(feature = "savestates")]
 use bincode::{Decode, Encode};
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Hash, Eq)]
 #[cfg_attr(feature = "savestates", derive(Encode, Decode))]
 #[repr(u8)]
 pub enum Slot {
@@ -38,7 +38,7 @@ impl Display for Slot {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "savestates", derive(Encode, Decode))]
 pub enum State {
     Won,

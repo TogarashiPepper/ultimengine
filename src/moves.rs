@@ -5,7 +5,7 @@ use bincode::{Decode, Encode};
 
 use crate::{board::State, game::Game};
 
-#[derive(PartialEq, Clone, Copy)]
+#[derive(PartialEq, Clone, Copy, Hash, Eq)]
 #[cfg_attr(feature = "savestates", derive(Encode, Decode))]
 pub struct Move {
     pub game: usize,

@@ -9,3 +9,4 @@ pub mod generated;
 pub mod moves;
 pub mod ref_counting;
 pub mod table;
+pub mod zobrist;

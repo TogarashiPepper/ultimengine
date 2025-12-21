@@ -2,225 +2,192 @@
 
 use std::{
     collections::HashMap,
+    f32::consts::E,
     hash::{BuildHasher, Hasher},
+    process::id,
 };
 
-use crate::{bitboard::consts::*, board::Slot, game::Game};
+use crate::{bitboard::consts::*, board::Slot, game::Game, zobrist::GLOBAL_ZOBRIST};
 
 // TODO: impl custom hashmap for games using this zobrist impl
 // https://medium.com/better-programming/implementing-a-hashmap-in-rust-35d055b5ac2b
 // https://www.chessprogramming.org/Transposition_Table
 // https://www.chessprogramming.org/Perft
 
-#[derive(Clone)]
-struct TTEntry {
-    key: Option<Game>,
-    turn: Slot,
-    val: i32,
+#[derive(Clone, Debug)]
+struct Entry {
+    key: (Option<Game>, Slot),
+    value: i32,
 }
 
-struct Table {
-    entries: Vec<TTEntry>,
-    count: usize,
-    zobr: ZobristBuilder,
-}
-
-impl Table {
+impl Entry {
     fn new() -> Self {
-        Table {
-            entries: vec![
-                TTEntry {
-                    key: None,
-                    val: 0,
-                    turn: Slot::Disabled
-                };
-                150
-            ],
-            count: 0,
-            zobr: ZobristBuilder::new(),
+        Self {
+            key: (None, Slot::Disabled),
+            value: 0,
         }
     }
 
-    // TODO: take depth into account?
-    pub fn insert(&mut self, game: Game, turn: Slot, score: i32) -> bool {
-        if self.count + 1 > self.entries.capacity() * 7 / 10 {
-            let ovec = std::mem::replace(
-                &mut self.entries,
-                vec![
-                    TTEntry {
-                        key: None,
-                        val: 0,
-                        turn: Slot::Disabled
-                    };
-                    self.count * 2
-                ],
-            );
+    fn new_tomb() -> Self {
+        Self {
+            key: (None, Slot::Disabled),
+            value: 4,
+        }
+    }
 
-            for ent in ovec {
-                if let Some(ref game) = ent.key {
-                    let dest = self.find_entry_mut(game, turn);
-                    *dest = ent
-                }
-            }
+    fn is_tomb(&self) -> bool {
+        self.key.0.is_none() && self.value == 4
+    }
+}
+
+pub struct Table {
+    entries: Vec<Entry>,
+    count: usize,
+}
+
+impl Table {
+    pub fn new() -> Self {
+        Self {
+            entries: vec![Entry::new(); 1000],
+            count: 0,
+        }
+    }
+
+    fn resize(&mut self) {
+        let mut old_vec = vec![Entry::new(); self.entries.len() * 2];
+
+        std::mem::swap(&mut old_vec, &mut self.entries);
+
+        self.count = 0;
+        for entry in old_vec.into_iter().filter(|e| e.key.0.is_some()) {
+            self.insert((entry.key.0.unwrap(), entry.key.1), entry.value);
+        }
+    }
+
+    pub fn insert(&mut self, key: (Game, Slot), value: i32) -> bool {
+        // 3 / 4 = 0.75, our chosen load factor, cant just do x0.75 since
+        // they're integers
+        if (self.count + 1) as f64 > self.entries.len() as f64 * 0.7 {
+            self.resize();
         }
 
-        let entry = self.find_entry_mut(&game, turn);
-        let is_new = entry.key.is_none();
+        let entry = self.find_entry_mut(&key.0, key.1);
+        let is_replacing = entry.key.0.is_some();
+        let is_new = entry.key.0.is_none() && !entry.is_tomb();
 
-        entry.key = Some(game);
-        entry.val = score;
-        entry.turn = turn;
+        *entry = Entry {
+            key: (Some(key.0), key.1),
+            value,
+        };
 
         if is_new {
             self.count += 1;
         }
 
-        is_new
+        !is_replacing
     }
 
-    pub fn delete(&mut self, game: &Game, turn: Slot) -> Option<i32> {
-        if self.count == 0 {
-            return None;
+    #[inline]
+    pub fn get(&self, game: &Game, slot: Slot) -> Option<i32> {
+        let entry = self.find_entry(game, slot);
+
+        if entry.key.0.is_some() {
+            Some(entry.value)
+        } else {
+            None
         }
-
-        let entry = self.find_entry(game, turn);
-        entry.key.as_ref()?;
-
-        todo!();
     }
 
-    pub fn get(&self, game: &Game, turn: Slot) -> Option<i32> {
-        if self.count == 0 {
-            return None;
+    pub fn delete(&mut self, key: (&Game, Slot)) -> Option<(Game, i32)> {
+        let ent = self.find_entry_mut(key.0, key.1);
+
+        if ent.key.0.is_some() {
+            let old = std::mem::replace(ent, Entry::new_tomb());
+
+            Some((old.key.0.unwrap(), old.value))
+        } else {
+            None
         }
-
-        let entry = self.find_entry(game, turn);
-        entry.key.as_ref()?;
-
-        Some(entry.val)
     }
 
-    fn find_entry(&self, game: &Game, turn: Slot) -> &TTEntry {
-        let cap = self.entries.capacity() as u64;
-        let mut idx = self.zobr.hash(game, turn) % cap;
+    #[inline]
+    fn find_entry_mut<'b, 'a: 'b>(&'a mut self, game: &Game, slot: Slot) -> &'b mut Entry {
+        let idx = self.find_index(game, slot);
+        &mut self.entries[idx]
+    }
 
+    #[inline]
+    fn find_entry<'b, 'a: 'b>(&'a self, game: &Game, slot: Slot) -> &'b Entry {
+        let idx = self.find_index(game, slot);
+        &self.entries[idx]
+    }
+
+    //  TODO: look into evicting old/worse entries
+    fn find_index(&self, game: &Game, slot: Slot) -> usize {
+        let h_cap = self.entries.len();
+        let mut index = GLOBAL_ZOBRIST.hash(game, slot) as usize % h_cap;
+
+        let mut tomb_idx = None;
         loop {
-            let entry = &self.entries[idx as usize];
+            let ent = &self.entries[index];
+            let (ref k_g, k_s) = ent.key;
 
-            if entry.key.is_none() || entry.key.as_ref() == Some(game) {
-                return &self.entries[idx as usize];
+            if (k_g.as_ref() == Some(game) && k_s == slot) || (k_g.is_none() && !ent.is_tomb()) {
+                let idx = if let Some(t_index) = tomb_idx {
+                    t_index
+                } else {
+                    index
+                };
+
+                return idx;
+            } else if ent.is_tomb() {
+                tomb_idx = Some(index);
             }
 
-            idx = (idx + 1) % cap;
-        }
-    }
-
-    fn find_entry_mut(&mut self, game: &Game, turn: Slot) -> &mut TTEntry {
-        let cap = self.entries.capacity() as u64;
-        let mut idx = self.zobr.hash(game, turn) % cap;
-
-        loop {
-            let entry = &self.entries[idx as usize];
-
-            if entry.key.is_none() || entry.key.as_ref() == Some(game) {
-                return &mut self.entries[idx as usize];
-            }
-
-            idx = (idx + 1) % cap;
+            index = (index + 1) % h_cap;
         }
     }
 }
 
-struct ZobristBuilder {
-    pieces_x: [[u64; 9]; 9],
-    pieces_o: [[u64; 9]; 9],
-    active: [u64; 10],
-    x_turn: u64,
-}
-
-impl ZobristBuilder {
-    fn new() -> Self {
-        // {x, o} * 81 squares
-        let pieces_x: [[u64; 9]; 9] = rand::random();
-        let pieces_o: [[u64; 9]; 9] = rand::random();
-        let active: [u64; 10] = rand::random();
-        let x_turn: u64 = rand::random();
-
-        ZobristBuilder {
-            pieces_x,
-            pieces_o,
-            active,
-            x_turn,
-        }
-    }
-
-    fn hash(&self, game: &Game, turn: Slot) -> u64 {
-        let mut hash = 0;
-
-        // TODO: SIMD
-        for (i, brd) in game.boards.iter().enumerate() {
-            let mut bd = brd.0 & X_MASK;
-
-            while bd != 0 {
-                let ix = bd.trailing_zeros();
-                hash ^= self.pieces_x[i][ix as usize];
-
-                bd &= bd - 1;
-            }
-        }
-
-        for (i, brd) in game.boards.iter().enumerate() {
-            let mut bd = (brd.0 & O_MASK) >> O_OFFS;
-
-            while bd != 0 {
-                let ix = bd.trailing_zeros();
-                hash ^= self.pieces_o[i][ix as usize];
-
-                bd &= bd - 1;
-            }
-        }
-
-        if turn == Slot::X {
-            hash ^= self.x_turn;
-        }
-
-        hash ^= self.active[game.active];
-
-        hash
+impl Default for Table {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
 #[cfg(test)]
 mod test {
-    use crate::{board::Slot, game::Game};
+    use std::{array, collections::HashSet};
 
-    use super::Table;
+    use rand::random;
+
+    use crate::{board::Slot, counting::score_game, game::Game, table::Table};
 
     #[test]
-    fn create_and_get_5000() {
+    fn insert_get_50k() {
         let mut table = Table::new();
+        let games: Vec<Game> = (0..50_000)
+            .map(|_| Game::random_seedless(10))
+            .collect::<HashSet<Game>>()
+            .into_iter()
+            .collect();
 
-        for times in 1..=5 {
-            for _ in 0..1000 {
-                let g = Game::random_seedless(times);
-                let fake_score = rand::random();
-                let turn = if rand::random() { Slot::X } else { Slot::O };
+        let arr: Vec<(Game, Slot, i32)> = games
+            .into_iter()
+            .map(|g| {
+                let turn = if random() { Slot::X } else { Slot::O };
+                let score = score_game(&g, turn);
 
-                table.insert(g.clone(), turn, fake_score);
+                (g, turn, score)
+            })
+            .collect();
 
-                assert_eq!(fake_score, table.get(&g, turn).unwrap())
-            }
+        for el in &arr {
+            assert!(table.insert((el.0.clone(), el.1), el.2));
         }
-    }
 
-    #[test]
-    fn overwrite() {
-        let mut table = Table::new();
-        let game = Game::random_seedless(18);
-
-        assert!(table.insert(game.clone(), Slot::X, 100));
-        assert!(!table.insert(game.clone(), Slot::X, 100));
-        assert!(!table.insert(game.clone(), Slot::X, 200));
-        assert_eq!(table.get(&game, Slot::X), Some(200));
+        for el in arr {
+            assert_eq!(table.get(&el.0, el.1), Some(el.2));
+        }
     }
 }

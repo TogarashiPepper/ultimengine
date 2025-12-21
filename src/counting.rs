@@ -51,6 +51,8 @@ fn _alpha_beta<const IS_MAX: bool>(
 
         for legal in lgs {
             let sim = game.sim_move(legal, Slot::X).unwrap();
+            // TODO: use table
+
             let eval =
                 _alpha_beta::<false>(&sim, choice, depth + 1 + (sim.active == 9) as u8, alp, bet);
 
@@ -130,6 +132,12 @@ pub fn score_game(game: &Game, turn: Slot) -> i32 {
 // Takes a `Board` and returns a "score" for how good it is for `X`
 #[inline]
 pub fn score(board: BitBoard, turn: Slot) -> i32 {
+    if board.won_by_x() {
+        return 10_000;
+    } else if board.won_by_o() {
+        return -10_000;
+    }
+
     let mut score = 0;
 
     // We like corners because they open up the ability to make diagonals,
@@ -143,14 +151,6 @@ pub fn score(board: BitBoard, turn: Slot) -> i32 {
     } else if turn == Slot::O {
         score -= 6 * board.one_aways_o();
         score -= 3 * board.one_aways_x();
-    }
-
-    if board.won_by_x() {
-        score = 10_000;
-    }
-
-    if board.won_by_o() {
-        score = -10_000;
     }
 
     score

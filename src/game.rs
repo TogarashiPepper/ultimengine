@@ -11,7 +11,7 @@ use crate::{
     moves::{Move, is_legal, legal_moves},
 };
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Hash, Eq)]
 #[cfg_attr(feature = "savestates", derive(Encode, Decode))]
 pub struct Game {
     pub boards: [BitBoard; 9],
