@@ -9,7 +9,7 @@ use crate::{
 #[cfg_attr(feature = "savestates", derive(Encode, Decode))]
 /// u32 holding 3 x 9 variants + 5 bits for state
 /// First 9 bits are X, then O, then Empty, then 2 bits for state, 3 unused:
-/// 00111   111111111   111111111   111111111
+/// 00011   111111111   111111111   111111111
 ///	state   empty bit   o brd bit   x brd bit
 pub struct BitBoard(pub u32);
 
