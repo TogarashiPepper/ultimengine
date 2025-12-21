@@ -19,22 +19,26 @@ impl Move {
         Move(idx_b | gam_b)
     }
 
-    pub fn game(&self) -> u8 {
+    #[inline]
+    pub const fn game(&self) -> u8 {
         self.0 >> 4
     }
 
-    pub fn set_game(&mut self, idx: u8) {
+    #[inline]
+    pub const fn set_game(&mut self, idx: u8) {
         debug_assert!(idx <= 9);
 
         self.0 &= 0b00001111;
         self.0 |= (idx & 0b00001111) << 4;
     }
 
-    pub fn index(&self) -> u8 {
+    #[inline]
+    pub const fn index(&self) -> u8 {
         self.0 & 0b00001111
     }
 
-    pub fn set_idx(&mut self, idx: u8) {
+    #[inline]
+    pub const fn set_idx(&mut self, idx: u8) {
         debug_assert!(idx <= 9);
 
         self.0 &= 0b11110000;

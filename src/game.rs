@@ -63,10 +63,12 @@ impl Game {
         g
     }
 
+	#[inline]
     pub const fn state(&self) -> State {
         State::from_u32(self.boards[0].0 >> UN_OFFS)
     }
 
+	#[inline]
     pub const fn set_state(&mut self, st: State) {
         self.boards[0].0 &= !UN_MASK;
         self.boards[0].0 |= st.to_u32() << UN_OFFS;
