@@ -20,7 +20,6 @@ pub struct Game {
     // Game state is stored in upper 3 bits of `boards[0]`
     pub boards: [BitBoard; 9],
     /// Indicates active board, 0-8 is the idx, 9 means any board is free
-	/// TODO: store this in unused board bits
     pub active: u8,
     pub last_move: Option<Move>,
 }
