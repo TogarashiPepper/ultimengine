@@ -21,54 +21,53 @@ struct Entry {
 }
 
 impl Entry {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self {
             key: (None, Slot::Disabled),
             value: 0,
         }
     }
 
-    fn new_tomb() -> Self {
+    const fn new_tomb() -> Self {
         Self {
             key: (None, Slot::Disabled),
             value: 4,
         }
     }
 
-    fn is_tomb(&self) -> bool {
+    const fn is_tomb(&self) -> bool {
         self.key.0.is_none() && self.value == 4
     }
 }
 
+const MEGABYTE: usize = 1_000_000;
+const SIZE: usize = 10 * MEGABYTE / size_of::<Entry>();
+
 pub struct Table {
-    entries: Vec<Entry>,
+    entries: Box<[Entry; SIZE]>,
     count: usize,
 }
 
 impl Table {
     pub fn new() -> Self {
         Self {
-            entries: vec![Entry::new(); 1000],
+            entries: vec![const { Entry::new() }; SIZE]
+                .into_boxed_slice()
+                .try_into()
+                .unwrap(),
             count: 0,
         }
     }
 
-    fn resize(&mut self) {
-        let mut old_vec = vec![Entry::new(); self.entries.len() * 2];
-
-        std::mem::swap(&mut old_vec, &mut self.entries);
-
-        self.count = 0;
-        for entry in old_vec.into_iter().filter(|e| e.key.0.is_some()) {
-            self.insert((entry.key.0.unwrap(), entry.key.1), entry.value);
-        }
+    fn prune(&mut self) {
+        todo!()
     }
 
     pub fn insert(&mut self, key: (Game, Slot), value: i32) -> bool {
         // 3 / 4 = 0.75, our chosen load factor, cant just do x0.75 since
         // they're integers
         if (self.count + 1) as f64 > self.entries.len() as f64 * 0.7 {
-            self.resize();
+            self.prune();
         }
 
         let entry = self.find_entry_mut(&key.0, key.1);

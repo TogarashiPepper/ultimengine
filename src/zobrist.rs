@@ -276,7 +276,7 @@ impl ZobristBuilder {
             hash ^= self.x_turn;
         }
 
-        hash ^= self.active[game.active];
+        hash ^= self.active[game.active as usize];
 
         hash
     }

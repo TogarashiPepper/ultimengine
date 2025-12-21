@@ -7,25 +7,26 @@ use crate::{board::State, game::Game};
 
 #[derive(PartialEq, Clone, Copy, Hash, Eq)]
 #[cfg_attr(feature = "savestates", derive(Encode, Decode))]
+// TODO: see if we can use even less bits here
 pub struct Move {
-    pub game: usize,
-    pub index: usize,
+    pub game: u8,
+    pub index: u8,
 }
 
 impl Debug for Move {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}{}", (self.game as u8 + b'A') as char, self.index + 1)
+        write!(f, "{}{}", (self.game + b'A') as char, self.index + 1)
     }
 }
 
 #[inline]
 pub fn is_legal(game: &Game, mv: Move) -> Result<(), &'static str> {
-    if game.boards[mv.game].state() != State::Undecided {
+    if game.boards[mv.game as usize].state() != State::Undecided {
         return Err("That game has been finished");
     }
 
     let idx = 1 << (18 + mv.index);
-    if game.boards[mv.game].0 & idx != idx {
+    if game.boards[mv.game as usize].0 & idx != idx {
         return Err("square is not empty");
     }
 
@@ -37,7 +38,7 @@ pub fn is_legal(game: &Game, mv: Move) -> Result<(), &'static str> {
 }
 
 // Game, Idx
-pub fn parse_move(input: &str, active: usize) -> Result<Move, &'static str> {
+pub fn parse_move(input: &str, active: u8) -> Result<Move, &'static str> {
     if input.len() > 2 || input.is_empty() {
         return Err("Move string must be 1 or 2 chars");
     }
@@ -49,7 +50,7 @@ pub fn parse_move(input: &str, active: usize) -> Result<Move, &'static str> {
     if input.len() == 1 && active != 9 {
         return Ok(Move {
             game: active,
-            index: input.as_bytes()[0] as usize - '0' as usize - 1,
+            index: input.as_bytes()[0] - b'0' - 1,
         });
     }
 
@@ -67,7 +68,7 @@ pub fn parse_move(input: &str, active: usize) -> Result<Move, &'static str> {
             return Err("game must be within a to i");
         };
 
-        let v = bs[0] as usize - 'a' as usize;
+        let v = bs[0] - b'a';
         mov.game = v;
     }
 
@@ -75,7 +76,7 @@ pub fn parse_move(input: &str, active: usize) -> Result<Move, &'static str> {
         return Err("index must be between 1 and 9");
     };
 
-    mov.index = bs[bs.len() - 1] as usize - '0' as usize - 1;
+    mov.index = bs[bs.len() - 1] - b'0' - 1;
 
     Ok(mov)
 }

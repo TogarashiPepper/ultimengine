@@ -96,7 +96,7 @@ mod table {
                         })
                         .collect::<Vec<(Game, Slot, i32)>>();
 
-                    let table = HashMap::with_capacity(1000);
+                    let table = HashMap::with_capacity(113636);
 
                     (entries, table)
                 })
@@ -121,7 +121,7 @@ mod table {
                         })
                         .collect::<Vec<(Game, Slot, i32)>>();
 
-                    let mut table = HashMap::with_capacity(1000);
+                    let mut table = HashMap::with_capacity(113636);
 
                     for ent in entries.clone() {
                         table.insert((ent.0, ent.1), ent.2);

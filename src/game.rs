@@ -16,7 +16,7 @@ use crate::{
 pub struct Game {
     pub boards: [BitBoard; 9],
     /// Indicates active board, 0-8 is the idx, 9 means any board is free
-    pub active: usize,
+    pub active: u8,
     pub state: State,
     pub last_move: Option<Move>,
 }
@@ -153,7 +153,7 @@ impl Game {
             self.active = mv.game;
         }
 
-        let brd = &mut self.boards[mv.game];
+        let brd = &mut self.boards[mv.game as usize];
 
         brd.0 |= 1
             << (mv.index
@@ -168,11 +168,11 @@ impl Game {
         brd.0 &= !idx;
 
         if brd.won_by_x() {
-            self.boards[mv.game].set_state(State::Won);
+            self.boards[mv.game as usize].set_state(State::Won);
         } else if brd.won_by_o() {
-            self.boards[mv.game].set_state(State::Lost);
+            self.boards[mv.game as usize].set_state(State::Lost);
         } else if !possible_to_win(*brd) {
-            self.boards[mv.game].set_state(State::Tied);
+            self.boards[mv.game as usize].set_state(State::Tied);
         }
 
         let shrunken = self.shrink();
@@ -184,7 +184,7 @@ impl Game {
             self.state = State::Tied;
         }
 
-        if self.boards[mv.index].state() != State::Undecided {
+        if self.boards[mv.index as usize].state() != State::Undecided {
             self.active = 9;
         } else {
             self.active = mv.index;
@@ -195,12 +195,13 @@ impl Game {
         Ok(())
     }
 
+    /// Maps a state to an ASCII color index
     fn state_to_col(&self, state: State, idx: usize) -> u8 {
         match state {
             State::Won => b'1',
             State::Lost => b'2',
             State::Tied => b'3',
-            State::Undecided if idx == self.active || self.active == 9 => b'5',
+            State::Undecided if idx == self.active as usize || self.active == 9 => b'5',
             _ => b'7',
         }
     }
@@ -219,8 +220,8 @@ impl Game {
                     }
                     b'm' => continue,
                     b'A'..=b'Z' => {
-                        let gm = (*byte - b'A') as usize;
-                        let idx = idxs[gm];
+                        let gm = *byte - b'A';
+                        let idx = idxs[gm as usize];
 
                         if self.last_move
                             == Some(Move {
@@ -230,12 +231,13 @@ impl Game {
                         {
                             *byte = b'4';
                         } else {
-                            *byte = self.state_to_col(self.boards[gm].state(), gm);
+                            *byte =
+                                self.state_to_col(self.boards[gm as usize].state(), gm as usize);
                         }
                     }
                     _ => {
                         let idx = (*byte - b'a') as usize;
-                        *byte = self.boards[idx].to_arr()[idxs[idx]].to_chr() as u8;
+                        *byte = self.boards[idx].to_arr()[idxs[idx] as usize].to_chr() as u8;
 
                         idxs[idx] += 1;
                     }

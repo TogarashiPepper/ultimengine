@@ -8,6 +8,7 @@ use crate::{
 #[cfg_attr(feature = "savestates", derive(Encode, Decode))]
 /// u32 holding 3 x 9 variants + 5 bits for state
 /// First 9 bits are X, then O, then Empty, then 5 bits for state
+/// TODO: make this 2 bits for state and then 3 unused that `Game` can take advantage of
 pub struct BitBoard(pub u32);
 
 pub mod consts {
