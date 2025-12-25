@@ -1,25 +1,36 @@
 use std::cmp::{max, min};
 
 use crate::{
-	bitboard::BitBoard,
+	bitboard::{
+		BitBoard,
+		consts::{O_MASK, X_MASK},
+	},
 	board::{Slot, State},
 	game::Game,
 	generated::POSSIBLE_TO_WIN,
 	moves::{Move, legal_moves},
 };
 
-pub const MAX_DEPTH: u8 = 13;
-
 pub fn alpha_beta(game: &Game) -> (i32, Move) {
 	// 15 is the highest that fits in the u4 of storage for each field
 	let mut mv = Move::new(15, 15);
 
-	let scr = _alpha_beta::<true>(game, &mut mv, 0, i32::MIN, i32::MAX);
+	let num_moves_made: u32 = game
+		.boards
+		.map(|b| (b.0 & X_MASK).count_ones() + (b.0 & O_MASK).count_ones())
+		.iter()
+		.sum();
+
+	let scr = if num_moves_made >= 14 {
+		_alpha_beta::<true, 13>(game, &mut mv, 0, i32::MIN, i32::MAX)
+	} else {
+		_alpha_beta::<true, 11>(game, &mut mv, 0, i32::MIN, i32::MAX)
+	};
 
 	(scr, mv)
 }
 
-fn _alpha_beta<const IS_MAX: bool>(
+fn _alpha_beta<const IS_MAX: bool, const MAX_DEPTH: u8>(
 	game: &Game,
 	choice: &mut Move,
 	depth: u8,
@@ -51,8 +62,13 @@ fn _alpha_beta<const IS_MAX: bool>(
 			let sim = game.sim_move(legal, Slot::X).unwrap();
 			// TODO: use table
 
-			let eval =
-				_alpha_beta::<false>(&sim, choice, depth + 1 + (sim.active == 9) as u8, alp, bet);
+			let eval = _alpha_beta::<false, MAX_DEPTH>(
+				&sim,
+				choice,
+				depth + 1 + (sim.active == 9) as u8,
+				alp,
+				bet,
+			);
 
 			if eval > value && depth == 0 {
 				*choice = legal;
@@ -71,16 +87,16 @@ fn _alpha_beta<const IS_MAX: bool>(
 
 		if depth <= 8 {
 			lgs.sort_unstable_by(|a, b| {
-				let asim = game.sim_move(*a, Slot::X).unwrap();
-				let bsim = game.sim_move(*b, Slot::X).unwrap();
+				let asim = game.sim_move(*a, Slot::O).unwrap();
+				let bsim = game.sim_move(*b, Slot::O).unwrap();
 
-				score_game(&asim, Slot::X).cmp(&score_game(&bsim, Slot::X))
+				score_game(&bsim, Slot::O).cmp(&score_game(&asim, Slot::O))
 			});
 		}
 
 		for legal in lgs {
 			let sim = game.sim_move(legal, Slot::O).unwrap();
-			let eval = _alpha_beta::<true>(
+			let eval = _alpha_beta::<true, MAX_DEPTH>(
 				&sim,
 				choice,
 				depth + 1 + 2 * (sim.active == 9) as u8,
@@ -106,9 +122,7 @@ fn _alpha_beta<const IS_MAX: bool>(
 pub fn score_game(game: &Game, turn: Slot) -> i32 {
 	let mut scr = score(game.shrink(), turn) * 100;
 
-	for brd in game.boards {
-		scr += score(brd, turn) / 4;
-	}
+	scr += game.boards.map(|b| score(b, turn) / 4).iter().sum::<i32>();
 
 	for st in game.boards.map(BitBoard::state) {
 		if st == State::Won {

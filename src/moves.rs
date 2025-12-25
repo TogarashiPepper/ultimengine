@@ -3,7 +3,11 @@ use std::fmt::Debug;
 #[cfg(feature = "savestates")]
 use bincode::{Decode, Encode};
 
-use crate::{board::State, game::Game};
+use crate::{
+	bitboard::consts::{E_OFFS, ST_MASK, ST_OFFS},
+	board::State,
+	game::Game,
+};
 
 #[derive(PartialEq, Clone, Copy, Hash, Eq)]
 #[cfg_attr(feature = "savestates", derive(Encode, Decode))]
@@ -108,14 +112,29 @@ pub fn parse_move(input: &str, active: u8) -> Result<Move, &'static str> {
 	Ok(mov)
 }
 
+#[inline]
+pub fn fast_legal(game: &Game, mv: Move) -> bool {
+	let g_idx = mv.game();
+	let brd = game.boards[g_idx as usize];
+
+	let in_finished = (brd.0 & ST_MASK) >> ST_OFFS != 0;
+
+	let idx = 1 << (18 + mv.index());
+	let in_occupied = brd.0 & idx != idx;
+
+	let not_active = game.active != mv.game() && game.active != 9;
+
+	!(not_active || in_occupied || in_finished)
+}
+
 pub fn legal_moves(game: &Game) -> Vec<Move> {
-	let mut mvs = Vec::with_capacity(81);
+	let mut mvs = Vec::with_capacity(80);
 
 	for bdx in 0..9 {
 		for idx in 0..9 {
 			let m = Move::new(bdx, idx);
 
-			if is_legal(game, m).is_ok() {
+			if fast_legal(game, m) {
 				mvs.push(m);
 			}
 		}
