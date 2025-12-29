@@ -1,7 +1,5 @@
 use std::array;
 
-#[cfg(feature = "savestates")]
-use bincode::{Decode, Encode};
 use rand::{SeedableRng, seq::IndexedRandom};
 
 use crate::{
@@ -15,13 +13,11 @@ use crate::{
 };
 
 #[derive(Debug, Clone, PartialEq, Hash, Eq)]
-#[cfg_attr(feature = "savestates", derive(Encode, Decode))]
 pub struct Game {
 	// Game state is stored in upper 3 bits of `boards[0]`
 	pub boards: [BitBoard; 9],
 	/// Indicates active board, 0-8 is the idx, 9 means any board is free
 	pub active: u8,
-	pub last_move: Option<Move>,
 }
 
 /// Template for board, a-i represents which board
@@ -55,7 +51,6 @@ impl Game {
 		let mut g = Game {
 			boards: [BitBoard::new(); 9],
 			active: 9,
-			last_move: None,
 		};
 
 		g.set_state(State::Undecided);
@@ -207,8 +202,6 @@ impl Game {
 			self.active = mv.index();
 		}
 
-		self.last_move = Some(mv);
-
 		Ok(())
 	}
 
@@ -223,7 +216,7 @@ impl Game {
 		}
 	}
 
-	pub fn print(&self) -> String {
+	pub fn print(&self, last_move: Option<Move>) -> String {
 		let mut res = TEMPLATE.to_vec();
 		let mut idxs = [0; 9];
 
@@ -240,7 +233,7 @@ impl Game {
 						let gm = *byte - b'A';
 						let idx = idxs[gm as usize];
 
-						if self.last_move == Some(Move::new(gm, idx)) {
+						if last_move == Some(Move::new(gm, idx)) {
 							*byte = b'4';
 						} else {
 							*byte =

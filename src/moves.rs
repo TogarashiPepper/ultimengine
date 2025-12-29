@@ -1,26 +1,26 @@
-use std::fmt::Debug;
-
-#[cfg(feature = "savestates")]
-use bincode::{Decode, Encode};
+use std::fmt::{Debug, Display};
 
 use crate::{
-	bitboard::consts::{E_OFFS, ST_MASK, ST_OFFS},
+	bitboard::consts::{ST_MASK, ST_OFFS},
 	board::State,
 	game::Game,
 };
 
-#[derive(PartialEq, Clone, Copy, Hash, Eq)]
-#[cfg_attr(feature = "savestates", derive(Encode, Decode))]
+#[derive(PartialEq, Clone, Copy, Hash, Eq, Debug)]
 /// Upper 4 bits is .game, lower 4 bits is .index
 /// 0000  0000
 /// game  idx
-pub struct Move(u8);
+pub struct Move(pub(crate) u8);
 
 impl Move {
 	pub fn new(game: u8, index: u8) -> Self {
 		let idx_b = index & 0b00001111;
 		let gam_b = (game & 0b00001111) << 4;
 		Move(idx_b | gam_b)
+	}
+
+	pub fn from_raw(n: u8) -> Self {
+		Move(n)
 	}
 
 	#[inline]
@@ -50,7 +50,7 @@ impl Move {
 	}
 }
 
-impl Debug for Move {
+impl Display for Move {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		write!(f, "{}{}", (self.game() + b'A') as char, self.index() + 1)
 	}

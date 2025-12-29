@@ -9,7 +9,18 @@ use crate::{
 	game::Game,
 	generated::POSSIBLE_TO_WIN,
 	moves::{Move, legal_moves},
+	openingbook::OBOOK,
 };
+
+pub fn engine_mv(game: &Game) -> Move {
+	for (gm, rf) in OBOOK.0.iter() {
+		if gm == game {
+			return *rf;
+		}
+	}
+
+	alpha_beta(game).1
+}
 
 pub fn alpha_beta(game: &Game) -> (i32, Move) {
 	// 15 is the highest that fits in the u4 of storage for each field
@@ -18,7 +29,7 @@ pub fn alpha_beta(game: &Game) -> (i32, Move) {
 	let num_moves_made: u32 = game
 		.boards
 		.map(|b| (b.0 & X_MASK).count_ones() + (b.0 & O_MASK).count_ones())
-		.iter()
+		.into_iter()
 		.sum();
 
 	let scr = if num_moves_made >= 14 {
