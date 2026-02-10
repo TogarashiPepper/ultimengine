@@ -62,15 +62,15 @@ fn _alpha_beta<const IS_MAX: bool, const MAX_DEPTH: u8>(
 		// a sorted list that it's worth it (see sortdepthanalysis.txt)
 		if depth <= 8 {
 			lgs.sort_unstable_by(|a, b| {
-				let asim = game.sim_move(*a, Slot::X).unwrap();
-				let bsim = game.sim_move(*b, Slot::X).unwrap();
+				let asim = unsafe { game.sim_move(*a, Slot::X).unwrap_unchecked() };
+				let bsim = unsafe { game.sim_move(*b, Slot::X).unwrap_unchecked() };
 
 				score_game(&bsim, Slot::X).cmp(&score_game(&asim, Slot::X))
 			});
 		}
 
 		for legal in lgs {
-			let sim = game.sim_move(legal, Slot::X).unwrap();
+			let sim = unsafe { game.sim_move(legal, Slot::X).unwrap_unchecked() };
 			// TODO: use table
 
 			let eval = _alpha_beta::<false, MAX_DEPTH>(
@@ -98,15 +98,15 @@ fn _alpha_beta<const IS_MAX: bool, const MAX_DEPTH: u8>(
 
 		if depth <= 8 {
 			lgs.sort_unstable_by(|a, b| {
-				let asim = game.sim_move(*a, Slot::O).unwrap();
-				let bsim = game.sim_move(*b, Slot::O).unwrap();
+				let asim = unsafe { game.sim_move(*a, Slot::O).unwrap_unchecked() };
+				let bsim = unsafe { game.sim_move(*b, Slot::O).unwrap_unchecked() };
 
 				score_game(&bsim, Slot::O).cmp(&score_game(&asim, Slot::O))
 			});
 		}
 
 		for legal in lgs {
-			let sim = game.sim_move(legal, Slot::O).unwrap();
+			let sim = unsafe { game.sim_move(legal, Slot::O).unwrap_unchecked() };
 			let eval = _alpha_beta::<true, MAX_DEPTH>(
 				&sim,
 				choice,
@@ -238,5 +238,40 @@ pub fn possible_to_win(board: BitBoard) -> bool {
 		}
 
 		idx += 16
+	}
+}
+
+#[inline]
+#[cfg(all(target_arch = "x86_64", target_feature = "avx2"))]
+unsafe fn possible_to_win(board: BitBoard) -> bool {
+	use core::arch::x86_64::{
+		_mm256_and_si256, _mm256_cmpeq_epi32, _mm256_loadu_si256, _mm256_movemask_epi8,
+		_mm256_or_si256, _mm256_set1_epi32,
+	};
+
+	let brd = _mm256_set1_epi32(board.0 as i32);
+	let mut idx = 0;
+
+	loop {
+		if idx >= 88 {
+			break false;
+		}
+
+		let masks0 = _mm256_loadu_si256(POSSIBLE_TO_WIN.as_ptr().add(idx) as *const __m256i);
+		let masks1 = _mm256_loadu_si256(POSSIBLE_TO_WIN.as_ptr().add(idx + 8) as *const __m256i);
+
+		let and0 = _mm256_and_si256(masks0, brd);
+		let and1 = _mm256_and_si256(masks1, brd);
+
+		let eqs0 = _mm256_cmpeq_epi32(and0, masks0);
+		let eqs1 = _mm256_cmpeq_epi32(and1, masks1);
+
+		let comb = _mm256_or_si256(eqs0, eqs1);
+
+		if _mm256_movemask_epi8(comb) != 0 {
+			return true;
+		}
+
+		idx += 16;
 	}
 }
